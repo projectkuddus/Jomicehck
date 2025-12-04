@@ -61,11 +61,52 @@ const HowItWorks: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 font-sans text-slate-800">
-      {/* Header */}
+      {/* Problem Statement */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 mb-16">
+        <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center bangla-text">সমস্যাটা কী?</h2>
+        
+        <div className="max-w-3xl mx-auto space-y-4 text-slate-700">
+          <p className="text-sm leading-relaxed">
+            <span className="font-bold">জমি/ফ্ল্যাট/বাড়ি/দোকান</span> — এটা সাধারণত একজন মানুষের সারাজীবনের সঞ্চয়।
+          </p>
+          
+          <p className="text-sm leading-relaxed">
+            বাংলাদেশে <span className="font-bold text-red-700">সম্পত্তি জালিয়াতি, দলিলে ভুল, লুকানো মর্টগেজ, জমি বিরোধ</span> খুবই সাধারণ ব্যাপার।
+          </p>
+          
+          <p className="text-sm leading-relaxed">
+            দলিল লম্বা, জটিল আইনি বাংলায় লেখা — <span className="font-bold">ক্রেতা বুঝতেই পারে না কী সাইন করছে।</span>
+          </p>
+          
+          <p className="text-sm leading-relaxed">
+            একটি ভুল সাইন = <span className="font-bold text-red-700">৫-১০ বছরের মামলা + বিশাল আর্থিক ক্ষতি।</span>
+          </p>
+          
+          <div className="bg-white rounded-xl p-4 mt-6 border border-amber-200">
+            <p className="text-sm font-semibold text-slate-800 mb-3">ক্রেতারা এখন কার উপর নির্ভর করে?</p>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li>• <span className="font-medium">দালাল / ডেভেলপার</span> — যাদের স্বার্থ বিক্রেতার সাথে</li>
+              <li>• <span className="font-medium">উকিল</span> — ব্যয়বহুল, সবার নাগালে নেই</li>
+              <li>• <span className="font-medium">নিজের অনুমান</span> — যা প্রায়ই ভুল হয়</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="mt-8 text-center">
+          <p className="text-slate-900 font-bold bangla-text">
+            JomiCheck — সাইন করার আগে দলিল বুঝুন।
+          </p>
+          <p className="text-slate-600 text-sm mt-1">
+            দ্রুত, বোধগম্য, সাশ্রয়ী।
+          </p>
+        </div>
+      </div>
+
+      {/* How It Works Header */}
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-slate-900 mb-4 bangla-text">কিভাবে কাজ করে?</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 bangla-text">কিভাবে কাজ করে?</h2>
         <p className="text-slate-600 max-w-xl mx-auto">
-          Upload your deed. We read the text. You get a Bangla report.
+          Upload → We Read → You Get Report
         </p>
       </div>
 

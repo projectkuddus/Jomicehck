@@ -276,13 +276,10 @@ const App: React.FC = () => {
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-slate-900 bangla-text flex items-center gap-2 mb-2">
                     <Sparkles className="text-brand-600" size={24}/>
-                    দলিল পড়ুন, বুঝুন
+                    সাইন করার আগে দলিল বুঝুন
                   </h2>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    সাইন করার আগে জানুন দলিলে কী লেখা আছে। ওয়ারিশ বাদ পড়েছে? দাগ ভুল? সীমানা অস্পষ্ট?
-                  </p>
-                  <p className="text-slate-500 text-xs mt-1">
-                    Upload deed → We read text → Bangla report
+                    জমি/ফ্ল্যাট কেনার আগে দলিল আপলোড করুন। কী লেখা আছে বাংলায় জানুন।
                   </p>
                 </div>
 

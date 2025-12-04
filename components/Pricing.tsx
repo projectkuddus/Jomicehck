@@ -81,12 +81,12 @@ const Pricing: React.FC = () => {
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 rounded-full text-sm font-semibold mb-6 border border-brand-100">
           <Gift size={16} />
-          Try 5 Pages Free
+          ৫ পেজ ফ্রি
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Read Your Deed Before You Sign</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 bangla-text">সাইন করার আগে দলিল বুঝুন</h2>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-          Upload your property documents. Get a structured Bangla report.<br/>
-          <span className="text-slate-500">Know what's written before you commit.</span>
+          দলিল আপলোড করুন। বাংলায় রিপোর্ট পান।<br/>
+          <span className="text-slate-500">দ্রুত। বোধগম্য। সাশ্রয়ী।</span>
         </p>
       </div>
 

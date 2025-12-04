@@ -8,8 +8,10 @@ const getAI = () => {
   if (!ai) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is not configured. Please add it in Vercel Settings → Environment Variables.");
+      throw new Error("GEMINI_API_KEY not found in environment");
     }
+    // Log first few chars for debugging (safe - not exposing full key)
+    console.log(`Initializing Gemini with key starting: ${apiKey.substring(0, 10)}...`);
     ai = new GoogleGenAI({ apiKey });
   }
   return ai;
@@ -135,9 +137,9 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
 
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    // Provide more specific error messages
-    if (error.message?.includes('API key')) {
-      throw new Error("API configuration error. Please contact support.");
+    // Provide more specific error messages - include actual error for debugging
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
+      throw new Error(`API key error: ${error.message}`);
     }
     if (error.message?.includes('quota') || error.message?.includes('rate')) {
       throw new Error("Service temporarily busy. Please try again in a moment.");

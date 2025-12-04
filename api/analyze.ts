@@ -35,7 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error("Analysis error:", error);
-    return res.status(500).json({ error: "Something went wrong" });
+    const errorMessage = error.message || "Something went wrong";
+    return res.status(500).json({ error: errorMessage });
   }
 }
 

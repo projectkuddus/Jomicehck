@@ -1,13 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DocumentInput, AnalysisResult, ChatMessage } from "./types.js";
 
-// Initialize Gemini Client
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY environment variable is required");
-}
+// Lazy initialization to avoid crashes during module load
+let ai: GoogleGenAI | null = null;
 
-const ai = new GoogleGenAI({ apiKey });
+const getAI = () => {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is not configured. Please add it in Vercel Settings → Environment Variables.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
 
 const SYSTEM_INSTRUCTION = `
 You are an expert Senior Property Lawyer in Bangladesh (Supreme Court Advocate).
@@ -69,16 +75,14 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
       text: "Analyze these documents. Be critical. Find what is wrong. Ensure you populate 'goodPoints', 'badPoints', 'criticalIssues', 'missingInfo' and 'nextSteps' with detailed, distinct items. Extract a 'chainOfTitleTimeline' with specific dates/eras (CS, SA, RS) and events. Output valid JSON in Bangla."
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+    const genAI = getAI();
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
       contents: {
         parts: parts
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        thinkingConfig: {
-          thinkingBudget: 32768,
-        },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -131,7 +135,17 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
 
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    throw new Error(error.message || "Failed to analyze documents");
+    // Provide more specific error messages
+    if (error.message?.includes('API key')) {
+      throw new Error("API configuration error. Please contact support.");
+    }
+    if (error.message?.includes('quota') || error.message?.includes('rate')) {
+      throw new Error("Service temporarily busy. Please try again in a moment.");
+    }
+    if (error.message?.includes('timeout')) {
+      throw new Error("Analysis took too long. Please try with fewer pages.");
+    }
+    throw new Error(error.message || "Failed to analyze documents. Please try again.");
   }
 };
 
@@ -166,8 +180,9 @@ export const chatMessage = async (
     }
 
     // Create chat session with history
-    const chat = await ai.chats.create({
-      model: 'gemini-2.5-flash',
+    const genAI = getAI();
+    const chat = await genAI.chats.create({
+      model: 'gemini-2.0-flash',
       config: {
         systemInstruction: CHAT_SYSTEM_INSTRUCTION,
       },

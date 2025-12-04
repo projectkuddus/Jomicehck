@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { analyzeDocuments } from '../backend/src/services/geminiService.js';
-import { DocumentInput } from '../backend/src/types.js';
+import { analyzeDocuments } from './lib/geminiService.js';
+import { DocumentInput } from './lib/types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers

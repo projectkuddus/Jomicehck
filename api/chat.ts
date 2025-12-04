@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { chatMessage } from '../backend/src/services/geminiService.js';
-import { ChatMessage, AnalysisResult } from '../backend/src/types.js';
+import { chatMessage } from './lib/geminiService.js';
+import { ChatMessage, AnalysisResult } from './lib/types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers

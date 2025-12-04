@@ -115,32 +115,60 @@ const App: React.FC = () => {
     setActiveTab('report');
   };
 
-  // Dynamic Pricing Logic
+  // Credit System Constants
+  const FREE_CREDITS = 5; // Free trial pages
+  const CREDIT_RATE = 8; // BDT per credit (based on Popular package rate)
+  
+  // Check if user has used free trial (stored in localStorage)
+  const [usedFreeTrial, setUsedFreeTrial] = useState(() => {
+    return localStorage.getItem('jomi_free_trial_used') === 'true';
+  });
+
+  // Dynamic Credit-Based Pricing
   const priceCalculation = useMemo(() => {
-    if (files.length === 0) return { total: 0, pages: 0, tier: 'Lite' };
+    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, freeCreditsUsed: 0, isFree: false };
     
     // Calculate total "pages" (Images = 1, PDF = 5 estimated)
     const totalPages = files.reduce((acc, file) => acc + file.estimatedPages, 0);
     
-    let tier = 'Lite';
-    let cost = 500;
-
-    if (totalPages <= 6) {
-      tier = 'Lite (1-6 pgs)';
-      cost = 500;
-    } else if (totalPages <= 20) {
-      tier = 'Standard (7-20 pgs)';
-      cost = 1500;
-    } else {
-      tier = 'Deep / Developer (21+ pgs)';
-      cost = 3000; 
+    // Calculate credits needed
+    let creditsNeeded = totalPages;
+    let freeCreditsUsed = 0;
+    let isFree = false;
+    
+    // Apply free trial if not used and pages <= FREE_CREDITS
+    if (!usedFreeTrial && totalPages <= FREE_CREDITS) {
+      freeCreditsUsed = totalPages;
+      creditsNeeded = 0;
+      isFree = true;
+    } else if (!usedFreeTrial) {
+      // Partial free credits
+      freeCreditsUsed = FREE_CREDITS;
+      creditsNeeded = totalPages - FREE_CREDITS;
     }
     
-    return { total: cost, pages: totalPages, tier };
-  }, [files]);
+    const cost = creditsNeeded * CREDIT_RATE;
+    
+    return { 
+      total: cost, 
+      pages: totalPages, 
+      creditsNeeded, 
+      freeCreditsUsed,
+      isFree
+    };
+  }, [files, usedFreeTrial]);
 
   const handleStartAnalysis = () => {
     if (files.length === 0) return;
+    
+    // If using free trial (no payment needed)
+    if (priceCalculation.isFree) {
+      // Mark free trial as used
+      localStorage.setItem('jomi_free_trial_used', 'true');
+      setUsedFreeTrial(true);
+      runAnalysis();
+      return;
+    }
     
     if (!hasPaid) {
       setIsPaymentOpen(true);
@@ -152,6 +180,11 @@ const App: React.FC = () => {
   const handlePaymentSuccess = () => {
     setIsPaymentOpen(false);
     setHasPaid(true);
+    // Mark free trial as used after first paid analysis
+    if (!usedFreeTrial) {
+      localStorage.setItem('jomi_free_trial_used', 'true');
+      setUsedFreeTrial(true);
+    }
     runAnalysis();
   };
 
@@ -225,6 +258,7 @@ const App: React.FC = () => {
         onClose={() => setIsPaymentOpen(false)} 
         onConfirm={handlePaymentSuccess} 
         amount={priceCalculation.total}
+        creditsNeeded={priceCalculation.creditsNeeded}
       />
 
       {/* Main Content Area */}
@@ -262,25 +296,51 @@ const App: React.FC = () => {
                 {files.length > 0 ? (
                   <div className="animate-in slide-in-from-bottom-2 fade-in duration-300">
                     
-                    {/* Price Card */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-5">
+                    {/* Credit-Based Price Card */}
+                    <div className={`border rounded-xl p-5 mb-5 ${priceCalculation.isFree ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
                        <div className="flex justify-between items-start mb-4">
                           <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Estimated Cost</span>
-                            <div className="text-3xl font-extrabold text-slate-900">
-                              {priceCalculation.total}৳
-                            </div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              {priceCalculation.isFree ? '🎉 Free Trial' : 'Credits Needed'}
+                            </span>
+                            {priceCalculation.isFree ? (
+                              <div className="text-2xl font-extrabold text-green-600">
+                                FREE!
+                              </div>
+                            ) : (
+                              <div className="text-3xl font-extrabold text-slate-900">
+                                {priceCalculation.creditsNeeded} <span className="text-lg font-medium text-slate-500">credits</span>
+                              </div>
+                            )}
                           </div>
                           <div className="text-right">
-                             <span className="inline-block px-2 py-1 bg-brand-100 text-brand-700 text-xs font-bold rounded-md">
-                               {priceCalculation.tier}
-                             </span>
-                             <div className="text-xs text-slate-500 mt-1">{priceCalculation.pages} estimated pages</div>
+                             {priceCalculation.isFree ? (
+                               <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">
+                                 First {FREE_CREDITS} pages free!
+                               </span>
+                             ) : priceCalculation.freeCreditsUsed > 0 ? (
+                               <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">
+                                 {priceCalculation.freeCreditsUsed} free credits applied
+                               </span>
+                             ) : (
+                               <span className="inline-block px-2 py-1 bg-brand-100 text-brand-700 text-xs font-bold rounded-md">
+                                 ≈ ৳{priceCalculation.total}
+                               </span>
+                             )}
+                             <div className="text-xs text-slate-500 mt-1">{priceCalculation.pages} pages to analyze</div>
                           </div>
                        </div>
                        <div className="text-[11px] text-slate-500 border-t border-slate-200 pt-3 leading-relaxed">
-                         Includes: Deep Forensic Scan • Chain of Title Verification • Vested Property Check • Bangla Report
+                         {priceCalculation.isFree 
+                           ? '✨ Experience full analysis free! No credit card needed.'
+                           : 'Includes: Deep Forensic Scan • Chain of Title • Vested Property Check • AI Chat'
+                         }
                        </div>
+                       {!usedFreeTrial && !priceCalculation.isFree && (
+                         <div className="mt-3 text-xs text-amber-600 bg-amber-50 rounded-lg p-2 border border-amber-100">
+                           💡 Tip: Upload {FREE_CREDITS} pages or less to try FREE!
+                         </div>
+                       )}
                     </div>
 
                     {/* Main Action Button */}
@@ -288,18 +348,24 @@ const App: React.FC = () => {
                       onClick={handleStartAnalysis}
                       disabled={analysis.isLoading}
                       className={`
-                        w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg shadow-brand-600/20 transition-all
+                        w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg transition-all
                         ${analysis.isLoading 
                           ? 'bg-slate-400 cursor-not-allowed' 
-                          : 'bg-brand-600 hover:bg-brand-700 hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0'
+                          : priceCalculation.isFree
+                            ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20 hover:shadow-green-600/30 hover:-translate-y-0.5 active:translate-y-0'
+                            : 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20 hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0'
                         }
                       `}
                     >
                       {analysis.isLoading ? (
                         <span className="flex items-center gap-2">Processing...</span>
+                      ) : priceCalculation.isFree ? (
+                        <>
+                          🎉 Analyze FREE <ArrowRight size={20} />
+                        </>
                       ) : (
                         <>
-                          Pay & Analyze Risks <ArrowRight size={20} />
+                          Use {priceCalculation.creditsNeeded} Credits & Analyze <ArrowRight size={20} />
                         </>
                       )}
                     </button>

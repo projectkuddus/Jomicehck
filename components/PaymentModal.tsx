@@ -1,19 +1,34 @@
 
 import React, { useState } from 'react';
-import { X, CheckCircle, Lock } from 'lucide-react';
+import { X, CheckCircle, Lock, Sparkles, CreditCard } from 'lucide-react';
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   amount: number;
+  creditsNeeded?: number;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount }) => {
+const creditPackages = [
+  { credits: 20, price: 199, perPage: 10 },
+  { credits: 50, price: 399, perPage: 8, popular: true },
+  { credits: 100, price: 699, perPage: 7 },
+  { credits: 250, price: 1499, perPage: 6 },
+];
+
+const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
   const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(() => {
+    // Auto-select the best package for user's needs
+    const recommended = creditPackages.find(p => p.credits >= creditsNeeded) || creditPackages[1];
+    return recommended.credits;
+  });
 
   if (!isOpen) return null;
+
+  const currentPackage = creditPackages.find(p => p.credits === selectedPackage)!;
 
   const handlePay = () => {
     setIsProcessing(true);
@@ -33,53 +48,103 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       ></div>
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-center relative">
-          <h3 className="text-lg font-bold text-slate-800">Secure Payment</h3>
-          <button onClick={onClose} className="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-5 text-white relative">
+          <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white transition-colors">
             <X size={20} />
           </button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <CreditCard size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Buy Credits</h3>
+              <p className="text-sm text-white/80">You need {creditsNeeded} credits for this analysis</p>
+            </div>
+          </div>
         </div>
 
         {/* Body */}
         <div className="p-6">
-          <div className="text-center mb-8">
-            <p className="text-sm text-slate-500 mb-2">Total Processing Fee</p>
-            <div className="text-4xl font-extrabold text-slate-900 flex items-center justify-center gap-1 font-sans tracking-tight">
-              <span className="text-2xl text-slate-400">৳</span>
-              <span>{amount}</span>
-            </div>
-            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-100">
-              <Lock size={12} />
-              SSL Secured
+          
+          {/* Credit Packages */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold text-slate-700 mb-3">Select Credit Package</div>
+            <div className="grid grid-cols-2 gap-3">
+              {creditPackages.map((pkg) => (
+                <div
+                  key={pkg.credits}
+                  onClick={() => setSelectedPackage(pkg.credits)}
+                  className={`
+                    relative p-4 rounded-xl border-2 cursor-pointer transition-all
+                    ${selectedPackage === pkg.credits 
+                      ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-200' 
+                      : 'border-slate-100 hover:border-slate-200 bg-white'
+                    }
+                  `}
+                >
+                  {pkg.popular && (
+                    <div className="absolute -top-2 -right-2 bg-brand-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Sparkles size={10} /> Best
+                    </div>
+                  )}
+                  <div className="font-bold text-slate-900">{pkg.credits} Credits</div>
+                  <div className="text-xl font-extrabold text-slate-900">৳{pkg.price}</div>
+                  <div className="text-xs text-slate-500">৳{pkg.perPage}/page</div>
+                  {selectedPackage === pkg.credits && (
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle size={18} className="text-brand-600" />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-3 mb-8">
+          {/* Summary */}
+          <div className="bg-slate-50 rounded-xl p-4 mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-slate-600">Selected Package</span>
+              <span className="font-bold text-slate-900">{currentPackage.credits} Credits</span>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-slate-600">Credits Needed Now</span>
+              <span className="font-bold text-brand-600">-{creditsNeeded}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+              <span className="text-sm text-slate-600">Remaining Credits</span>
+              <span className="font-bold text-green-600">+{currentPackage.credits - creditsNeeded}</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">
+              💡 Extra credits never expire. Use for future analyses!
+            </p>
+          </div>
+
+          {/* Payment Methods */}
+          <div className="text-sm font-semibold text-slate-700 mb-3">Payment Method</div>
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <div 
               onClick={() => setMethod('bkash')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-200' : 'border-slate-100 hover:border-slate-200'}`}
+              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
-              <div className="w-12 h-12 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">bKash</div>
+              <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs">bKash</div>
               <div className="flex-1">
-                <p className="font-bold text-slate-800">bKash</p>
-                <p className="text-xs text-slate-500">Personal Account</p>
+                <p className="font-bold text-slate-800 text-sm">bKash</p>
               </div>
-              {method === 'bkash' && <div className="bg-pink-600 text-white rounded-full p-0.5"><CheckCircle size={16} /></div>}
+              {method === 'bkash' && <CheckCircle size={16} className="text-pink-600" />}
             </div>
 
             <div 
               onClick={() => setMethod('nagad')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-200' : 'border-slate-100 hover:border-slate-200'}`}
+              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
-              <div className="w-12 h-12 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">Nagad</div>
+              <div className="w-10 h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-xs">Nagad</div>
               <div className="flex-1">
-                <p className="font-bold text-slate-800">Nagad</p>
-                <p className="text-xs text-slate-500">Personal Account</p>
+                <p className="font-bold text-slate-800 text-sm">Nagad</p>
               </div>
-              {method === 'nagad' && <div className="bg-orange-600 text-white rounded-full p-0.5"><CheckCircle size={16} /></div>}
+              {method === 'nagad' && <CheckCircle size={16} className="text-orange-600" />}
             </div>
           </div>
 
@@ -90,8 +155,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
               ${isProcessing ? 'bg-slate-400 cursor-not-allowed' : 'bg-brand-600 hover:bg-brand-700'}
             `}
           >
-            {isProcessing ? 'Processing Payment...' : `Confirm Payment ৳${amount}`}
+            {isProcessing ? 'Processing...' : `Pay ৳${currentPackage.price} for ${currentPackage.credits} Credits`}
           </button>
+          
+          <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
+            <Lock size={12} />
+            <span>Secure payment via {method === 'bkash' ? 'bKash' : 'Nagad'}</span>
+          </div>
         </div>
       </div>
     </div>

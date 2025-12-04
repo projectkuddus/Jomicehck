@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 let analysisContext: AnalysisResult | null = null;
 let chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [];
 
-const BATCH_SIZE = 50; // Process files in batches to avoid API limits and memory issues
+const BATCH_SIZE = 3; // Process 3 files per batch to stay under Vercel's 4.5MB limit
 
 /**
  * Analyze a single batch of documents
@@ -25,6 +25,9 @@ const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; d
   });
 
   if (!response.ok) {
+    if (response.status === 413) {
+      throw new Error("Files too large. Please try with fewer or smaller files.");
+    }
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(errorData.error || `Server error: ${response.status}`);
   }
@@ -117,12 +120,7 @@ export const analyzeDocuments = async (
       throw new Error("No valid documents provided");
     }
 
-    // For small batches, process directly
-    if (allDocuments.length <= BATCH_SIZE) {
-      return await analyzeBatch(allDocuments);
-    }
-
-    // For large batches, process in chunks
+    // Always process in batches to avoid payload size limits
     const batches: Array<{ name: string; mimeType: string; data: string }[]> = [];
     for (let i = 0; i < allDocuments.length; i += BATCH_SIZE) {
       batches.push(allDocuments.slice(i, i + BATCH_SIZE));

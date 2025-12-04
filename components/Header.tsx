@@ -1,14 +1,15 @@
-
 import React from 'react';
-import { FileCheck, UserCircle, Menu, X, History } from 'lucide-react';
+import { FileCheck, Menu, X, History } from 'lucide-react';
+import UserMenu from './UserMenu';
 
 interface HeaderProps {
   onNavigate: (page: 'home' | 'how-it-works' | 'pricing' | 'support') => void;
   onToggleHistory: () => void;
+  onOpenAuth: () => void;
   currentPage: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, currentPage }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth, currentPage }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -23,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, currentPag
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 py-4 px-4 md:px-6 sticky top-0 z-50 shadow-sm font-sans">
+    <header className="bg-white border-b border-slate-200 py-3 px-4 md:px-6 sticky top-0 z-50 shadow-sm font-sans">
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
         <div 
           className="flex items-center gap-2 md:gap-3 cursor-pointer" 
@@ -61,6 +62,9 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, currentPag
             <History size={18} />
             <span>My Reports</span>
           </button>
+
+          {/* User Menu */}
+          <UserMenu onOpenAuth={onOpenAuth} />
           
           {/* Mobile Menu Button */}
           <button 

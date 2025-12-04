@@ -9,7 +9,9 @@ import HowItWorks from './components/HowItWorks';
 import Pricing from './components/Pricing';
 import Support from './components/Support';
 import ChatInterface from './components/ChatInterface'; 
-import HistorySidebar from './components/HistorySidebar'; // New Component
+import HistorySidebar from './components/HistorySidebar';
+import AuthModal from './components/AuthModal';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import { analyzeDocuments } from './services/geminiService';
 import { FileWithPreview, AnalysisState, HistoryItem } from './types';
@@ -24,17 +26,20 @@ import {
   Sparkles,
   Zap,
   MessageSquareText,
-  FileText
+  FileText,
+  LogIn
 } from 'lucide-react';
 
 type PageView = 'home' | 'how-it-works' | 'pricing' | 'support';
 type ResultTab = 'report' | 'chat';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user, profile, useCredits, isConfigured } = useAuth();
+  
   const [currentPage, setCurrentPage] = useState<PageView>('home');
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [hasPaid, setHasPaid] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>('report');
   
   // History State
@@ -116,76 +121,69 @@ const App: React.FC = () => {
   };
 
   // Credit System Constants
-  const FREE_CREDITS = 5; // Free trial pages
+  const FREE_CREDITS = 5; // Free trial pages for non-logged in users
   const CREDIT_RATE = 8; // BDT per credit (based on Popular package rate)
-  
-  // Check if user has used free trial (stored in localStorage)
-  const [usedFreeTrial, setUsedFreeTrial] = useState(() => {
-    return localStorage.getItem('jomi_free_trial_used') === 'true';
-  });
 
   // Dynamic Credit-Based Pricing
   const priceCalculation = useMemo(() => {
-    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, freeCreditsUsed: 0, isFree: false };
+    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, userCredits: 0, canAfford: false, needsLogin: false };
     
     // Calculate total "pages" (Images = 1, PDF = 5 estimated)
     const totalPages = files.reduce((acc, file) => acc + file.estimatedPages, 0);
+    const userCredits = profile?.credits || 0;
     
-    // Calculate credits needed
-    let creditsNeeded = totalPages;
-    let freeCreditsUsed = 0;
-    let isFree = false;
-    
-    // Apply free trial if not used and pages <= FREE_CREDITS
-    if (!usedFreeTrial && totalPages <= FREE_CREDITS) {
-      freeCreditsUsed = totalPages;
-      creditsNeeded = 0;
-      isFree = true;
-    } else if (!usedFreeTrial) {
-      // Partial free credits
-      freeCreditsUsed = FREE_CREDITS;
-      creditsNeeded = totalPages - FREE_CREDITS;
+    // If user is logged in, check their credits
+    if (user && profile) {
+      const canAfford = userCredits >= totalPages;
+      return { 
+        total: totalPages * CREDIT_RATE, 
+        pages: totalPages, 
+        creditsNeeded: totalPages,
+        userCredits,
+        canAfford,
+        needsLogin: false
+      };
     }
     
-    const cost = creditsNeeded * CREDIT_RATE;
-    
+    // Not logged in - prompt to login for free credits
     return { 
-      total: cost, 
+      total: totalPages * CREDIT_RATE, 
       pages: totalPages, 
-      creditsNeeded, 
-      freeCreditsUsed,
-      isFree
+      creditsNeeded: totalPages,
+      userCredits: 0,
+      canAfford: false,
+      needsLogin: true
     };
-  }, [files, usedFreeTrial]);
+  }, [files, user, profile]);
 
-  const handleStartAnalysis = () => {
+  const handleStartAnalysis = async () => {
     if (files.length === 0) return;
     
-    // If using free trial (no payment needed)
-    if (priceCalculation.isFree) {
-      // Mark free trial as used
-      localStorage.setItem('jomi_free_trial_used', 'true');
-      setUsedFreeTrial(true);
-      runAnalysis();
+    // If not logged in, prompt to login
+    if (priceCalculation.needsLogin) {
+      setIsAuthOpen(true);
       return;
     }
     
-    if (!hasPaid) {
+    // If logged in but not enough credits, open payment
+    if (!priceCalculation.canAfford) {
       setIsPaymentOpen(true);
-    } else {
+      return;
+    }
+    
+    // Deduct credits and run analysis
+    const success = await useCredits(priceCalculation.creditsNeeded);
+    if (success) {
       runAnalysis();
+    } else {
+      setIsPaymentOpen(true);
     }
   };
 
   const handlePaymentSuccess = () => {
     setIsPaymentOpen(false);
-    setHasPaid(true);
-    // Mark free trial as used after first paid analysis
-    if (!usedFreeTrial) {
-      localStorage.setItem('jomi_free_trial_used', 'true');
-      setUsedFreeTrial(true);
-    }
-    runAnalysis();
+    // After buying credits, try analysis again
+    handleStartAnalysis();
   };
 
   const runAnalysis = async () => {
@@ -234,7 +232,6 @@ const App: React.FC = () => {
   const resetAnalysis = () => {
     setAnalysis({ isLoading: false, isStreaming: false, result: null, error: null });
     setFiles([]);
-    setHasPaid(false); 
   };
 
   return (
@@ -243,6 +240,7 @@ const App: React.FC = () => {
         onNavigate={setCurrentPage} 
         currentPage={currentPage} 
         onToggleHistory={() => setIsHistoryOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
       
       <HistorySidebar 
@@ -251,6 +249,11 @@ const App: React.FC = () => {
         history={history}
         onLoad={loadHistoryItem}
         onDelete={deleteHistoryItem}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
       />
 
       <PaymentModal 
@@ -297,48 +300,42 @@ const App: React.FC = () => {
                   <div className="animate-in slide-in-from-bottom-2 fade-in duration-300">
                     
                     {/* Credit-Based Price Card */}
-                    <div className={`border rounded-xl p-5 mb-5 ${priceCalculation.isFree ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`border rounded-xl p-5 mb-5 ${priceCalculation.canAfford ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
                        <div className="flex justify-between items-start mb-4">
                           <div>
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                              {priceCalculation.isFree ? '🎉 Free Trial' : 'Credits Needed'}
+                              Credits Needed
                             </span>
-                            {priceCalculation.isFree ? (
-                              <div className="text-2xl font-extrabold text-green-600">
-                                FREE!
-                              </div>
-                            ) : (
-                              <div className="text-3xl font-extrabold text-slate-900">
-                                {priceCalculation.creditsNeeded} <span className="text-lg font-medium text-slate-500">credits</span>
-                              </div>
-                            )}
+                            <div className="text-3xl font-extrabold text-slate-900">
+                              {priceCalculation.creditsNeeded} <span className="text-lg font-medium text-slate-500">credits</span>
+                            </div>
                           </div>
                           <div className="text-right">
-                             {priceCalculation.isFree ? (
-                               <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">
-                                 First {FREE_CREDITS} pages free!
-                               </span>
-                             ) : priceCalculation.freeCreditsUsed > 0 ? (
-                               <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">
-                                 {priceCalculation.freeCreditsUsed} free credits applied
-                               </span>
-                             ) : (
-                               <span className="inline-block px-2 py-1 bg-brand-100 text-brand-700 text-xs font-bold rounded-md">
-                                 ≈ ৳{priceCalculation.total}
-                               </span>
-                             )}
-                             <div className="text-xs text-slate-500 mt-1">{priceCalculation.pages} pages to analyze</div>
+                            {user && profile ? (
+                              <>
+                                <span className={`inline-block px-2 py-1 text-xs font-bold rounded-md ${priceCalculation.canAfford ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  You have: {priceCalculation.userCredits} credits
+                                </span>
+                              </>
+                            ) : (
+                              <span className="inline-block px-2 py-1 bg-brand-100 text-brand-700 text-xs font-bold rounded-md">
+                                Login for {FREE_CREDITS} free credits!
+                              </span>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">{priceCalculation.pages} pages to analyze</div>
                           </div>
                        </div>
                        <div className="text-[11px] text-slate-500 border-t border-slate-200 pt-3 leading-relaxed">
-                         {priceCalculation.isFree 
-                           ? '✨ Experience full analysis free! No credit card needed.'
-                           : 'Includes: Deep Forensic Scan • Chain of Title • Vested Property Check • AI Chat'
-                         }
+                         Includes: Deep Forensic Scan • Chain of Title • Vested Property Check • AI Chat
                        </div>
-                       {!usedFreeTrial && !priceCalculation.isFree && (
+                       {!user && (
+                         <div className="mt-3 text-xs text-brand-600 bg-brand-50 rounded-lg p-2 border border-brand-100">
+                           🎁 Sign up with your phone and get {FREE_CREDITS} free credits instantly!
+                         </div>
+                       )}
+                       {user && !priceCalculation.canAfford && (
                          <div className="mt-3 text-xs text-amber-600 bg-amber-50 rounded-lg p-2 border border-amber-100">
-                           💡 Tip: Upload {FREE_CREDITS} pages or less to try FREE!
+                           💡 You need {priceCalculation.creditsNeeded - priceCalculation.userCredits} more credits. Buy a package to continue.
                          </div>
                        )}
                     </div>
@@ -351,21 +348,27 @@ const App: React.FC = () => {
                         w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg transition-all
                         ${analysis.isLoading 
                           ? 'bg-slate-400 cursor-not-allowed' 
-                          : priceCalculation.isFree
-                            ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20 hover:shadow-green-600/30 hover:-translate-y-0.5 active:translate-y-0'
-                            : 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20 hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0'
+                          : priceCalculation.needsLogin
+                            ? 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20'
+                            : priceCalculation.canAfford
+                              ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20 hover:shadow-green-600/30 hover:-translate-y-0.5 active:translate-y-0'
+                              : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                         }
                       `}
                     >
                       {analysis.isLoading ? (
                         <span className="flex items-center gap-2">Processing...</span>
-                      ) : priceCalculation.isFree ? (
+                      ) : priceCalculation.needsLogin ? (
                         <>
-                          🎉 Analyze FREE <ArrowRight size={20} />
+                          <LogIn size={20} /> Login to Analyze
+                        </>
+                      ) : priceCalculation.canAfford ? (
+                        <>
+                          Use {priceCalculation.creditsNeeded} Credits & Analyze <ArrowRight size={20} />
                         </>
                       ) : (
                         <>
-                          Use {priceCalculation.creditsNeeded} Credits & Analyze <ArrowRight size={20} />
+                          Buy Credits to Continue <ArrowRight size={20} />
                         </>
                       )}
                     </button>
@@ -496,6 +499,15 @@ const App: React.FC = () => {
 
       </main>
     </div>
+  );
+};
+
+// Wrap with AuthProvider
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

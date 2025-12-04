@@ -62,16 +62,24 @@ const Pricing: React.FC = () => {
       a: "No! Your credits never expire. Buy once, use whenever you need. Perfect for future property purchases."
     },
     {
-      q: "Can I get a refund?",
-      a: "If you're not satisfied with your first analysis, contact us within 24 hours for a full refund. We're confident you'll love the results."
+      q: "Does JomiCheck replace lawyers?",
+      a: "No. JomiCheck is a screening tool that analyzes the TEXT content of your documents. We identify potential issues, missing clauses, and ownership gaps. However, we CANNOT verify physical authenticity of documents, real seals/stamps, or actual registry records. Always consult a lawyer and visit the registry for final verification."
+    },
+    {
+      q: "Can you detect fake documents?",
+      a: "We can detect logical errors, missing legal clauses, inconsistent dates, and suspicious patterns in the TEXT. However, we cannot verify if the physical paper, seal, or signature is authentic. For that, you need physical verification at the Sub-Registrar office."
     },
     {
       q: "Is this report legally binding?",
-      a: "No. JomiCheck provides a risk assessment for your awareness. For final legal validation and registry checks, you must consult a lawyer or the AC Land office. We give you the checklist of WHAT to verify."
+      a: "No. JomiCheck provides a risk assessment for your awareness only. It is NOT a legal opinion or certificate. For legal validation, registry checks, and court matters, you must consult a licensed lawyer."
     },
     {
       q: "What documents can I upload?",
       a: "We support all major Bangladeshi land documents including Saf Kabala, Heba, Khatian (CS, SA, RS, BS), Namjari (Mutation), DCR, Tax Receipts (Khajna), and Power of Attorney."
+    },
+    {
+      q: "Why should I use JomiCheck then?",
+      a: "Think of us as your first line of defense. Before spending ৳5,000+ on a lawyer or wasting half a day at the registry, use JomiCheck to identify RED FLAGS in minutes. If we find issues, you know what to ask the lawyer. If the document looks clean, you have more confidence to proceed."
     }
   ];
 
@@ -166,34 +174,52 @@ const Pricing: React.FC = () => {
         ))}
       </div>
 
-      {/* Comparison Section */}
+      {/* What We Do Section */}
       <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 md:p-12 text-white mb-16 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-[100px] opacity-20 -mr-20 -mt-20"></div>
         
         <div className="relative z-10">
-          <h3 className="text-2xl font-bold mb-6 text-center">Why Choose JomiCheck?</h3>
+          <h3 className="text-2xl font-bold mb-2 text-center">What JomiCheck Does</h3>
+          <p className="text-center text-slate-400 text-sm mb-8">
+            AI-powered first-line screening for your property documents
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-              <div className="text-3xl font-bold text-brand-400 mb-2">৳399</div>
-              <div className="text-sm text-slate-300 mb-1">JomiCheck (50 pages)</div>
-              <div className="text-xs text-slate-400">Instant Results</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* What we CAN do */}
+            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-5">
+              <div className="text-green-400 font-bold mb-3 flex items-center gap-2">
+                <Check size={18} /> What We Analyze
+              </div>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>• Text content & legal clauses</li>
+                <li>• Ownership chain & timeline</li>
+                <li>• Missing information & gaps</li>
+                <li>• Vested property red flags</li>
+                <li>• Logical inconsistencies</li>
+              </ul>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-              <div className="text-3xl font-bold text-red-400 mb-2">৳5,000+</div>
-              <div className="text-sm text-slate-300 mb-1">Local Lawyer</div>
-              <div className="text-xs text-slate-400">3-7 Days Wait</div>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-              <div className="text-3xl font-bold text-amber-400 mb-2">৳500+</div>
-              <div className="text-sm text-slate-300 mb-1">Registry Visit</div>
-              <div className="text-xs text-slate-400">Half Day + Travel</div>
+            
+            {/* What we CANNOT do */}
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5">
+              <div className="text-amber-400 font-bold mb-3 flex items-center gap-2">
+                <Info size={18} /> What We Cannot Verify
+              </div>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li>• Physical authenticity of paper</li>
+                <li>• Real seals & stamps</li>
+                <li>• Signature verification</li>
+                <li>• Registry office records</li>
+                <li>• On-ground property status</li>
+              </ul>
             </div>
           </div>
           
-          <p className="text-center text-sm text-slate-400 mt-6">
-            Save money AND time. Get lawyer-quality analysis in 2 minutes.
-          </p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+            <p className="text-sm text-slate-300">
+              <span className="text-brand-400 font-semibold">JomiCheck is a screening tool</span> — not a replacement for lawyers or physical verification. 
+              <br/>We help you identify potential issues <span className="text-white font-medium">before</span> you visit the registry or hire a lawyer.
+            </p>
+          </div>
         </div>
       </div>
 

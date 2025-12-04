@@ -276,10 +276,10 @@ const App: React.FC = () => {
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-slate-900 bangla-text flex items-center gap-2 mb-2">
                     <Sparkles className="text-brand-600" size={24}/>
-                    Property Risk Analyzer
+                    Document Analyzer
                   </h2>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Upload land documents (Deed, Khatian, Mutation) to detect legal risks, ownership gaps, and hidden clauses.
+                    Upload your deed or khatian. We'll read the text and create a structured Bangla report.
                   </p>
                 </div>
 
@@ -382,11 +382,11 @@ const App: React.FC = () => {
                   <div className="mt-4 space-y-4">
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex gap-3">
                        <div className="bg-white p-2 rounded-lg border border-slate-200 text-brand-600 h-fit">
-                         <Zap size={20} />
+                         <FileText size={20} />
                        </div>
                        <div>
-                         <h4 className="font-semibold text-slate-900 text-sm">Instant Analysis</h4>
-                         <p className="text-xs text-slate-500 mt-1">AI reads your deed in seconds, saving you days of manual checking.</p>
+                         <h4 className="font-semibold text-slate-900 text-sm">Text Analysis</h4>
+                         <p className="text-xs text-slate-500 mt-1">We read the text in your documents and create a structured report.</p>
                        </div>
                     </div>
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex gap-3">
@@ -394,8 +394,8 @@ const App: React.FC = () => {
                          <Shield size={20} />
                        </div>
                        <div>
-                         <h4 className="font-semibold text-slate-900 text-sm">Secure & Private</h4>
-                         <p className="text-xs text-slate-500 mt-1">Bank-grade encryption. Documents are automatically purged after analysis.</p>
+                         <h4 className="font-semibold text-slate-900 text-sm">Bangla Report</h4>
+                         <p className="text-xs text-slate-500 mt-1">Get results in Bangla. Ownership chain, missing info, potential issues.</p>
                        </div>
                     </div>
                   </div>

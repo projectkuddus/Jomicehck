@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Info, Building2, FileSignature, Languages, Gift, Sparkles, TrendingUp, Users, Zap } from 'lucide-react';
+import { Check, X, Info, Building2, FileSignature, Languages, Gift, Sparkles, TrendingUp, Users, Zap } from 'lucide-react';
 
 const Pricing: React.FC = () => {
   const creditPackages = [
@@ -50,36 +50,28 @@ const Pricing: React.FC = () => {
 
   const faqs = [
     {
-      q: "How do credits work?",
-      a: "1 credit = 1 page of document analysis. Upload your documents, and credits are deducted based on page count. Images count as 1 page, PDFs are estimated at 5 pages each."
+      q: "What does JomiCheck do?",
+      a: "We read the text in your property documents and create a structured report. We identify missing information, check ownership chain from what's written, and flag potential issues. We output everything in Bangla."
     },
     {
-      q: "Do I get free credits?",
-      a: "Yes! Every new user gets 5 FREE pages to try our service. No credit card required. Experience the full analysis before purchasing."
+      q: "What can't JomiCheck do?",
+      a: "We cannot verify if the physical document is real. We cannot check registry records. We cannot confirm signatures are authentic. We only analyze what's written in the text."
+    },
+    {
+      q: "How do credits work?",
+      a: "1 credit = 1 page. Images count as 1 page. PDFs are estimated at 5 pages. New users get 5 free pages to try."
     },
     {
       q: "Do credits expire?",
-      a: "No! Your credits never expire. Buy once, use whenever you need. Perfect for future property purchases."
+      a: "No. Use them whenever."
     },
     {
-      q: "Does JomiCheck replace lawyers?",
-      a: "No. JomiCheck is a screening tool that analyzes the TEXT content of your documents. We identify potential issues, missing clauses, and ownership gaps. However, we CANNOT verify physical authenticity of documents, real seals/stamps, or actual registry records. Always consult a lawyer and visit the registry for final verification."
-    },
-    {
-      q: "Can you detect fake documents?",
-      a: "We can detect logical errors, missing legal clauses, inconsistent dates, and suspicious patterns in the TEXT. However, we cannot verify if the physical paper, seal, or signature is authentic. For that, you need physical verification at the Sub-Registrar office."
-    },
-    {
-      q: "Is this report legally binding?",
-      a: "No. JomiCheck provides a risk assessment for your awareness only. It is NOT a legal opinion or certificate. For legal validation, registry checks, and court matters, you must consult a licensed lawyer."
+      q: "Is this report legally valid?",
+      a: "No. This is not a legal opinion or certificate. It's an analysis report for your reference. For legal matters, consult a lawyer."
     },
     {
       q: "What documents can I upload?",
-      a: "We support all major Bangladeshi land documents including Saf Kabala, Heba, Khatian (CS, SA, RS, BS), Namjari (Mutation), DCR, Tax Receipts (Khajna), and Power of Attorney."
-    },
-    {
-      q: "Why should I use JomiCheck then?",
-      a: "Think of us as your first line of defense. Before spending ৳5,000+ on a lawyer or wasting half a day at the registry, use JomiCheck to identify RED FLAGS in minutes. If we find issues, you know what to ask the lawyer. If the document looks clean, you have more confidence to proceed."
+      a: "Saf Kabala, Heba, Khatian (CS, SA, RS, BS), Namjari, DCR, Tax Receipts, Power of Attorney, and similar land documents."
     }
   ];
 
@@ -89,12 +81,12 @@ const Pricing: React.FC = () => {
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 rounded-full text-sm font-semibold mb-6 border border-brand-100">
           <Gift size={16} />
-          5 Pages FREE for New Users!
+          Try 5 Pages Free
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Simple Credit-Based Pricing</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Read Your Deed Before You Sign</h2>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-          Buy credits, use anytime. No subscriptions. No expiry. <br/>
-          <span className="text-brand-600 font-semibold">1 credit = 1 page analyzed</span>
+          Upload your property documents. Get a structured Bangla report.<br/>
+          <span className="text-slate-500">Know what's written before you commit.</span>
         </p>
       </div>
 
@@ -174,52 +166,63 @@ const Pricing: React.FC = () => {
         ))}
       </div>
 
-      {/* What We Do Section */}
-      <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 md:p-12 text-white mb-16 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-[100px] opacity-20 -mr-20 -mt-20"></div>
+      {/* What We Do - Honest & Clear */}
+      <div className="max-w-4xl mx-auto bg-slate-900 rounded-2xl p-8 md:p-10 text-white mb-16">
+        <h3 className="text-xl font-bold mb-6 text-center">What JomiCheck Does</h3>
         
-        <div className="relative z-10">
-          <h3 className="text-2xl font-bold mb-2 text-center">What JomiCheck Does</h3>
-          <p className="text-center text-slate-400 text-sm mb-8">
-            AI-powered first-line screening for your property documents
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* We DO */}
+          <div>
+            <div className="text-green-400 font-semibold mb-4 text-sm uppercase tracking-wide">We Read & Analyze</div>
+            <ul className="space-y-3 text-slate-300 text-sm">
+              <li className="flex items-start gap-2">
+                <Check size={16} className="text-green-400 mt-0.5 shrink-0" />
+                <span>Text written in your documents</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={16} className="text-green-400 mt-0.5 shrink-0" />
+                <span>Ownership chain from document text</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={16} className="text-green-400 mt-0.5 shrink-0" />
+                <span>Missing dates, names, boundaries</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={16} className="text-green-400 mt-0.5 shrink-0" />
+                <span>Clause inconsistencies</span>
+              </li>
+            </ul>
+          </div>
+          
+          {/* We DON'T */}
+          <div>
+            <div className="text-amber-400 font-semibold mb-4 text-sm uppercase tracking-wide">We Cannot Verify</div>
+            <ul className="space-y-3 text-slate-300 text-sm">
+              <li className="flex items-start gap-2">
+                <X size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                <span>If the paper/seal is real</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <X size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                <span>Registry office records</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <X size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                <span>Physical property status</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <X size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                <span>Signature authenticity</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="mt-8 pt-6 border-t border-slate-700 text-center">
+          <p className="text-slate-400 text-sm">
+            We read what's written in your deed. That's it. <br/>
+            For physical verification, visit the Sub-Registrar office.
           </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* What we CAN do */}
-            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-5">
-              <div className="text-green-400 font-bold mb-3 flex items-center gap-2">
-                <Check size={18} /> What We Analyze
-              </div>
-              <ul className="space-y-2 text-sm text-slate-300">
-                <li>• Text content & legal clauses</li>
-                <li>• Ownership chain & timeline</li>
-                <li>• Missing information & gaps</li>
-                <li>• Vested property red flags</li>
-                <li>• Logical inconsistencies</li>
-              </ul>
-            </div>
-            
-            {/* What we CANNOT do */}
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5">
-              <div className="text-amber-400 font-bold mb-3 flex items-center gap-2">
-                <Info size={18} /> What We Cannot Verify
-              </div>
-              <ul className="space-y-2 text-sm text-slate-300">
-                <li>• Physical authenticity of paper</li>
-                <li>• Real seals & stamps</li>
-                <li>• Signature verification</li>
-                <li>• Registry office records</li>
-                <li>• On-ground property status</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p className="text-sm text-slate-300">
-              <span className="text-brand-400 font-semibold">JomiCheck is a screening tool</span> — not a replacement for lawyers or physical verification. 
-              <br/>We help you identify potential issues <span className="text-white font-medium">before</span> you visit the registry or hire a lawyer.
-            </p>
-          </div>
         </div>
       </div>
 

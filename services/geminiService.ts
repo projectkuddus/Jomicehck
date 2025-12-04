@@ -10,7 +10,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 let analysisContext: AnalysisResult | null = null;
 let chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [];
 
-const BATCH_SIZE = 3; // Process 3 files per batch to stay under Vercel's 4.5MB limit
+// Vercel Hobby plan has 4.5MB body limit
+// Average document image is ~300-500KB in base64
+// Batch size of 5-7 should stay under limit for most files
+const MAX_BATCH_SIZE = 7;
+const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024; // 4MB to stay safely under 4.5MB limit
 
 /**
  * Analyze a single batch of documents
@@ -120,38 +124,70 @@ export const analyzeDocuments = async (
       throw new Error("No valid documents provided");
     }
 
-    // Always process in batches to avoid payload size limits
+    // Smart batching: group files by size to maximize throughput while staying under limit
     const batches: Array<{ name: string; mimeType: string; data: string }[]> = [];
-    for (let i = 0; i < allDocuments.length; i += BATCH_SIZE) {
-      batches.push(allDocuments.slice(i, i + BATCH_SIZE));
+    let currentBatch: Array<{ name: string; mimeType: string; data: string }> = [];
+    let currentBatchSize = 0;
+
+    for (const doc of allDocuments) {
+      const docSize = doc.data.length; // Base64 string length ≈ bytes
+      
+      // If adding this doc would exceed limit OR batch is full, start new batch
+      if (currentBatchSize + docSize > MAX_PAYLOAD_SIZE || currentBatch.length >= MAX_BATCH_SIZE) {
+        if (currentBatch.length > 0) {
+          batches.push(currentBatch);
+        }
+        currentBatch = [doc];
+        currentBatchSize = docSize;
+      } else {
+        currentBatch.push(doc);
+        currentBatchSize += docSize;
+      }
+    }
+    
+    // Don't forget the last batch
+    if (currentBatch.length > 0) {
+      batches.push(currentBatch);
     }
 
     const results: AnalysisResult[] = [];
     const totalBatches = batches.length;
+    let processedFiles = 0;
 
-    // Process batches sequentially to avoid overwhelming the API
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
-      const currentBatch = i + 1;
-      const currentFiles = (i * BATCH_SIZE) + batch.length;
+    // Process batches with controlled concurrency (2 at a time for speed)
+    const CONCURRENT_BATCHES = 2;
+    
+    for (let i = 0; i < batches.length; i += CONCURRENT_BATCHES) {
+      const batchGroup = batches.slice(i, i + CONCURRENT_BATCHES);
       
       // Report progress
       if (onProgress) {
-        onProgress(currentFiles, allDocuments.length, currentBatch, totalBatches);
+        onProgress(processedFiles, allDocuments.length, i + 1, totalBatches);
       }
 
-      try {
-        const batchResult = await analyzeBatch(batch);
-        results.push(batchResult);
-      } catch (error: any) {
-        console.error(`Batch ${currentBatch} failed:`, error);
-        // Continue with other batches even if one fails
-        // You might want to handle this differently based on requirements
+      // Process batch group in parallel
+      const batchPromises = batchGroup.map(async (batch, idx) => {
+        try {
+          const result = await analyzeBatch(batch);
+          return { success: true, result, batchIndex: i + idx };
+        } catch (error: any) {
+          console.error(`Batch ${i + idx + 1} failed:`, error);
+          return { success: false, error, batchIndex: i + idx };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      
+      for (const br of batchResults) {
+        if (br.success && br.result) {
+          results.push(br.result);
+        }
+        processedFiles += batches[br.batchIndex]?.length || 0;
       }
 
-      // Small delay between batches to avoid rate limiting
-      if (i < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Small delay between batch groups to avoid rate limiting
+      if (i + CONCURRENT_BATCHES < batches.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 

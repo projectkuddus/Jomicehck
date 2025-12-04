@@ -276,10 +276,13 @@ const App: React.FC = () => {
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-slate-900 bangla-text flex items-center gap-2 mb-2">
                     <Sparkles className="text-brand-600" size={24}/>
-                    Document Analyzer
+                    দলিল পড়ুন, বুঝুন
                   </h2>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Upload your deed or khatian. We'll read the text and create a structured Bangla report.
+                    সাইন করার আগে জানুন দলিলে কী লেখা আছে। ওয়ারিশ বাদ পড়েছে? দাগ ভুল? সীমানা অস্পষ্ট?
+                  </p>
+                  <p className="text-slate-500 text-xs mt-1">
+                    Upload deed → We read text → Bangla report
                   </p>
                 </div>
 
@@ -469,34 +472,42 @@ const App: React.FC = () => {
                    </div>
                 </div>
               ) : (
-                /* Scenario 3: Idle / Welcome State (Pro Dashboard Look) */
+                /* Scenario 3: Idle / Welcome State */
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400 select-none bg-slate-50/50">
                   <div className="max-w-md">
-                    <div className="w-24 h-24 bg-white rounded-3xl shadow-sm border border-slate-200 mx-auto flex items-center justify-center mb-6">
-                      <FileSearch size={40} className="text-slate-300" strokeWidth={1.5} />
+                    <div className="w-20 h-20 bg-white rounded-2xl shadow-sm border border-slate-200 mx-auto flex items-center justify-center mb-6">
+                      <FileSearch size={36} className="text-slate-300" strokeWidth={1.5} />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-700 mb-2">Ready to Analyze</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      Your analysis report will appear here. <br/>
-                      Select your documents from the left panel to begin the forensic scan.
+                    <h3 className="text-xl font-bold text-slate-700 mb-2 bangla-text">দলিল আপলোড করুন</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                      বাম পাশ থেকে দলিল আপলোড করুন।<br/>
+                      আমরা পড়ে রিপোর্ট দেব।
                     </p>
                     
-                    <div className="mt-10 grid grid-cols-2 gap-4 opacity-60">
-                      <div className="flex items-center gap-2 justify-center text-xs font-medium">
-                        <CheckCircle2 size={14} className="text-brand-500" />
-                        Bangla Translation
-                      </div>
-                      <div className="flex items-center gap-2 justify-center text-xs font-medium">
-                        <CheckCircle2 size={14} className="text-brand-500" />
-                        Ownership Chain
-                      </div>
-                      <div className="flex items-center gap-2 justify-center text-xs font-medium">
-                        <CheckCircle2 size={14} className="text-brand-500" />
-                        Legal Clauses
-                      </div>
-                      <div className="flex items-center gap-2 justify-center text-xs font-medium">
-                        <CheckCircle2 size={14} className="text-brand-500" />
-                        Fairness Check
+                    {/* Common Problems */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-4 text-left">
+                      <div className="text-xs font-semibold text-slate-400 uppercase mb-3">আমরা যা খুঁজি</div>
+                      <div className="space-y-2 text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500">•</span>
+                          <span>ওয়ারিশ বাদ পড়েছে কিনা</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500">•</span>
+                          <span>দাগ/খতিয়ান নম্বর আছে কিনা</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500">•</span>
+                          <span>সীমানা স্পষ্ট কিনা</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500">•</span>
+                          <span>মালিকানা চেইন সম্পূর্ণ কিনা</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-500">•</span>
+                          <span>কোনো তথ্য অনুপস্থিত কিনা</span>
+                        </div>
                       </div>
                     </div>
                   </div>

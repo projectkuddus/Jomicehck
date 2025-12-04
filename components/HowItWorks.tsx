@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, FileText, FileCheck, AlertTriangle, Users, MapPin, FileX, Scale, Clock } from 'lucide-react';
+import { Upload, FileText, FileCheck, AlertTriangle, Clock, Banknote, Home, Users, Gavel } from 'lucide-react';
 
 const HowItWorks: React.FC = () => {
   const steps = [
@@ -20,49 +20,43 @@ const HowItWorks: React.FC = () => {
     }
   ];
 
-  const realProblems = [
+  const consequences = [
     {
-      icon: <Users size={20} />,
-      title: "ওয়ারিশ বাদ পড়েছে",
-      titleEn: "Missing Heir (Warish)",
-      desc: "দলিলে সব উত্তরাধিকারীর স্বাক্ষর নেই। পরে বাদ পড়া ওয়ারিশ মামলা করে।",
-      descEn: "Not all legal heirs signed the deed. Later, missing heir files case."
+      icon: <Gavel size={24} />,
+      title: "১০-২০ বছরের মামলা",
+      titleEn: "10-20 years court case",
+      desc: "একটি ভুল দলিলে সাইন মানে বছরের পর বছর আদালতে যাওয়া। উকিল ফি, তারিখ, হাজিরা — জীবন থেমে যায়।",
     },
     {
-      icon: <MapPin size={20} />,
-      title: "দাগ/খতিয়ান ভুল",
-      titleEn: "Wrong Dag/Khatian",
-      desc: "দলিলে লেখা দাগ নম্বর আর জমির আসল দাগ নম্বর মিলছে না।",
-      descEn: "Dag number in deed doesn't match actual land records."
+      icon: <Banknote size={24} />,
+      title: "টাকা ফেরত নেই",
+      titleEn: "Money gone forever",
+      desc: "রেজিস্ট্রি হয়ে গেলে টাকা ফেরত পাওয়া প্রায় অসম্ভব। বিক্রেতা উধাও, আপনি আটকে।",
     },
     {
-      icon: <FileX size={20} />,
-      title: "সীমানা অস্পষ্ট",
-      titleEn: "Vague Boundaries",
-      desc: "চৌহদ্দি/সীমানা স্পষ্টভাবে লেখা নেই। পরে প্রতিবেশী দাবি করে।",
-      descEn: "Property boundaries not clearly written. Neighbor claims land later."
+      icon: <Home size={24} />,
+      title: "জমি দখল হয়ে যায়",
+      titleEn: "Land taken by others",
+      desc: "আসল ওয়ারিশ বা মালিক এসে দাবি করলে জমি হাতছাড়া। আপনার কাগজ থাকলেও।",
     },
     {
-      icon: <Scale size={20} />,
-      title: "অর্পিত সম্পত্তি",
-      titleEn: "Vested Property",
-      desc: "মালিকানা চেইনে সংখ্যালঘু নাম আছে যা হঠাৎ বদলে গেছে। ভেস্টেড আইনে জটিলতা।",
-      descEn: "Minority name in ownership chain disappeared. Vested property risk."
+      icon: <Users size={24} />,
+      title: "পরিবারে সমস্যা",
+      titleEn: "Family disputes",
+      desc: "জীবনের সঞ্চয় দিয়ে কেনা জমি নিয়ে ঝামেলা মানে পরিবারে অশান্তি, মানসিক চাপ।",
     },
     {
-      icon: <Clock size={20} />,
-      title: "মেয়াদোত্তীর্ণ POA",
-      titleEn: "Expired Power of Attorney",
-      desc: "পাওয়ার অফ অ্যাটর্নির মেয়াদ শেষ হয়ে গেছে, কিন্তু সেটা দিয়েই বিক্রি হচ্ছে।",
-      descEn: "Power of Attorney has expired but still being used for sale."
+      icon: <Clock size={24} />,
+      title: "সময় নষ্ট",
+      titleEn: "Years wasted",
+      desc: "মামলা চলাকালীন জমি বিক্রি করা যায় না, ঘর বানানো যায় না। জীবন আটকে থাকে।",
     },
     {
-      icon: <AlertTriangle size={20} />,
-      title: "লুকানো দায়",
-      titleEn: "Hidden Encumbrance",
-      desc: "ব্যাংক মর্টগেজ বা আদালতের নিষেধাজ্ঞা আছে যা দলিলের শেষে ছোট করে লেখা।",
-      descEn: "Bank mortgage or court injunction mentioned in fine print."
-    }
+      icon: <AlertTriangle size={24} />,
+      title: "পরবর্তী প্রজন্মেও সমস্যা",
+      titleEn: "Problem passes to children",
+      desc: "আপনার পরে সন্তানদেরও এই মামলা বহন করতে হয়। সমস্যা বংশ পরম্পরায় চলে।",
+    },
   ];
 
   return (
@@ -76,7 +70,7 @@ const HowItWorks: React.FC = () => {
       </div>
 
       {/* Steps */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
         {steps.map((step, idx) => (
           <div key={idx} className="flex flex-col items-center text-center bg-white p-6 rounded-xl border border-slate-200">
             <div className="w-14 h-14 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mb-4">
@@ -88,88 +82,83 @@ const HowItWorks: React.FC = () => {
         ))}
       </div>
 
-      {/* Real Problems Section */}
+      {/* Consequences Section */}
       <div className="bg-slate-900 rounded-2xl p-8 md:p-10 text-white mb-16">
-        <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold mb-2 bangla-text">দলিল না বুঝে সাইন করলে যা হয়</h3>
-          <p className="text-slate-400 text-sm">Real problems people face from not reading their deed properly</p>
+        <div className="text-center mb-10">
+          <h3 className="text-2xl font-bold mb-3 bangla-text">ভুল দলিলে সাইন করলে কী হয়?</h3>
+          <p className="text-slate-400 text-sm max-w-lg mx-auto">
+            একবার রেজিস্ট্রি হয়ে গেলে ফেরত নেই। এই সমস্যাগুলো বাস্তব — প্রতিদিন হাজার হাজার পরিবার ভুগছে।
+          </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {realProblems.map((problem, idx) => (
-            <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-amber-400">
-                  {problem.icon}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {consequences.map((item, idx) => (
+            <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <div className="flex items-start gap-4">
+                <div className="text-red-400 mt-1">
+                  {item.icon}
                 </div>
                 <div>
-                  <div className="font-bold text-white bangla-text text-sm">{problem.title}</div>
-                  <div className="text-slate-400 text-xs">{problem.titleEn}</div>
+                  <div className="font-bold text-white bangla-text mb-1">{item.title}</div>
+                  <div className="text-slate-500 text-xs mb-2">{item.titleEn}</div>
+                  <p className="text-slate-300 text-sm bangla-text leading-relaxed">{item.desc}</p>
                 </div>
               </div>
-              <p className="text-slate-300 text-xs bangla-text leading-relaxed mb-1">{problem.desc}</p>
-              <p className="text-slate-500 text-[10px]">{problem.descEn}</p>
             </div>
           ))}
         </div>
         
-        <div className="mt-8 pt-6 border-t border-white/10 text-center">
+        <div className="mt-10 pt-8 border-t border-white/10 text-center">
+          <p className="text-lg font-bold text-white bangla-text mb-2">
+            সাইন করার আগে দলিল পড়ুন।
+          </p>
           <p className="text-slate-400 text-sm">
-            এই সমস্যাগুলো হয় কারণ মানুষ দলিল পড়ে না বা বুঝে না।<br/>
-            <span className="text-white">JomiCheck দলিলের টেক্সট পড়ে এবং এই সমস্যাগুলো খুঁজে বের করে।</span>
+            JomiCheck দলিলের টেক্সট পড়ে সমস্যা খুঁজে বের করে — আপনি সাইন করার আগে।
           </p>
         </div>
       </div>
 
-      {/* What We Check */}
+      {/* What We Read */}
       <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-        <h3 className="text-xl font-bold text-slate-900 mb-6 text-center">দলিলে আমরা যা চেক করি</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-6 text-center bangla-text">দলিলে আমরা কী পড়ি?</h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">👤</div>
-            <div className="font-semibold text-slate-800 text-sm">মালিকানা চেইন</div>
-            <div className="text-slate-500 text-xs">Ownership Chain</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">মালিকানা চেইন</div>
+            <div className="text-slate-500 text-xs">কে কার কাছ থেকে কিনেছে</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">📍</div>
-            <div className="font-semibold text-slate-800 text-sm">দাগ ও খতিয়ান</div>
-            <div className="text-slate-500 text-xs">Dag & Khatian</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">দাগ ও খতিয়ান</div>
+            <div className="text-slate-500 text-xs">নম্বর লেখা আছে কিনা</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">📐</div>
-            <div className="font-semibold text-slate-800 text-sm">সীমানা/চৌহদ্দি</div>
-            <div className="text-slate-500 text-xs">Boundaries</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">সীমানা</div>
+            <div className="text-slate-500 text-xs">চৌহদ্দি স্পষ্ট কিনা</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">📅</div>
-            <div className="font-semibold text-slate-800 text-sm">তারিখ ও নাম</div>
-            <div className="text-slate-500 text-xs">Dates & Names</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">ওয়ারিশ</div>
+            <div className="text-slate-500 text-xs">সবার নাম আছে কিনা</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">⚖️</div>
-            <div className="font-semibold text-slate-800 text-sm">আইনি ক্লজ</div>
-            <div className="text-slate-500 text-xs">Legal Clauses</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">তারিখ</div>
+            <div className="text-slate-500 text-xs">সব তারিখ ঠিক আছে কিনা</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">👥</div>
-            <div className="font-semibold text-slate-800 text-sm">ওয়ারিশ তালিকা</div>
-            <div className="text-slate-500 text-xs">Heir List</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">ক্লজ</div>
+            <div className="text-slate-500 text-xs">আইনি শর্তাবলী</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">🏦</div>
-            <div className="font-semibold text-slate-800 text-sm">দায়/মর্টগেজ</div>
-            <div className="text-slate-500 text-xs">Encumbrance</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">দায়</div>
+            <div className="text-slate-500 text-xs">মর্টগেজ/ব্যাংক ঋণ</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
-            <div className="text-2xl mb-2">❓</div>
-            <div className="font-semibold text-slate-800 text-sm">অনুপস্থিত তথ্য</div>
-            <div className="text-slate-500 text-xs">Missing Info</div>
+            <div className="font-semibold text-slate-800 text-sm bangla-text">অনুপস্থিত তথ্য</div>
+            <div className="text-slate-500 text-xs">কী বাদ পড়েছে</div>
           </div>
         </div>
         
         <p className="text-center text-slate-500 text-xs mt-6">
-          আমরা শুধু দলিলে যা লেখা আছে তা পড়ি। রেজিস্ট্রি অফিসে যাচাই করতে হবে আলাদাভাবে।
+          আমরা শুধু দলিলে যা লেখা আছে তা পড়ি। রেজিস্ট্রি অফিসে ভেরিফাই করতে হবে আলাদাভাবে।
         </p>
       </div>
     </div>

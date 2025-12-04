@@ -474,42 +474,15 @@ const App: React.FC = () => {
               ) : (
                 /* Scenario 3: Idle / Welcome State */
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400 select-none bg-slate-50/50">
-                  <div className="max-w-md">
+                  <div className="max-w-sm">
                     <div className="w-20 h-20 bg-white rounded-2xl shadow-sm border border-slate-200 mx-auto flex items-center justify-center mb-6">
                       <FileSearch size={36} className="text-slate-300" strokeWidth={1.5} />
                     </div>
                     <h3 className="text-xl font-bold text-slate-700 mb-2 bangla-text">দলিল আপলোড করুন</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                    <p className="text-sm text-slate-500 leading-relaxed">
                       বাম পাশ থেকে দলিল আপলোড করুন।<br/>
-                      আমরা পড়ে রিপোর্ট দেব।
+                      আমরা পড়ে বাংলায় রিপোর্ট দেব।
                     </p>
-                    
-                    {/* Common Problems */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-4 text-left">
-                      <div className="text-xs font-semibold text-slate-400 uppercase mb-3">আমরা যা খুঁজি</div>
-                      <div className="space-y-2 text-xs text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <span className="text-amber-500">•</span>
-                          <span>ওয়ারিশ বাদ পড়েছে কিনা</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-amber-500">•</span>
-                          <span>দাগ/খতিয়ান নম্বর আছে কিনা</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-amber-500">•</span>
-                          <span>সীমানা স্পষ্ট কিনা</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-amber-500">•</span>
-                          <span>মালিকানা চেইন সম্পূর্ণ কিনা</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-amber-500">•</span>
-                          <span>কোনো তথ্য অনুপস্থিত কিনা</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}

@@ -112,9 +112,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
-      console.log('Auth event:', event, 'User:', newSession?.user?.email);
+      console.log('🔔 Auth event:', event, 'User:', newSession?.user?.email);
 
       if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
         setUser(null);
         setProfile(null);
         setSession(null);
@@ -122,24 +123,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Handle OAuth callback
+      // Handle OAuth callback - this fires when user returns from Google
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (newSession?.user) {
+          console.log('✅ User signed in - fetching profile...');
           setSession(newSession);
           setUser(newSession.user);
           
-          // Fetch or create profile
+          // Always fetch profile to ensure it's up to date
           const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
-          if (mounted) setProfile(profileData);
+          if (mounted) {
+            setProfile(profileData);
+            if (profileData) {
+              console.log('✅ Profile loaded - Credits:', profileData.credits);
+            }
+          }
         }
       }
 
+      // Also handle any session updates
       if (newSession?.user) {
         setSession(newSession);
         setUser(newSession.user);
         
-        // Fetch profile if not already set
-        if (!profile) {
+        // Fetch profile if not already set or if it's a new session
+        if (!profile || profile.id !== newSession.user.id) {
           const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
           if (mounted) setProfile(profileData);
         }
@@ -153,32 +161,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         // Check for OAuth callback in URL hash first
         const hash = window.location.hash;
-        if (hash.includes('access_token') || hash.includes('error')) {
-          // OAuth callback detected - let Supabase process it
-          console.log('OAuth callback detected in URL');
+        const isOAuthCallback = hash.includes('access_token') || hash.includes('error');
+        
+        if (isOAuthCallback) {
+          console.log('🔍 OAuth callback detected in URL - waiting for Supabase to process...');
+          // Give Supabase time to process the OAuth callback from the hash
+          // Supabase's detectSessionInUrl: true should handle this automatically
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
+        // Get session - Supabase will extract tokens from hash if present
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
         if (error) {
-          console.error('Session error:', error);
+          console.error('❌ Session error:', error);
           setLoading(false);
           return;
         }
         
         if (initialSession?.user) {
+          console.log('✅ Session found - User:', initialSession.user.email);
           setSession(initialSession);
           setUser(initialSession.user);
           
+          // Fetch profile - this might take a moment
           const profileData = await fetchProfile(initialSession.user.id, initialSession.user.email);
-          if (mounted) setProfile(profileData);
+          if (mounted) {
+            setProfile(profileData);
+            if (profileData) {
+              console.log('✅ Profile loaded - Credits:', profileData.credits);
+            } else {
+              console.warn('⚠️ Profile not found - will be created');
+            }
+          }
+        } else {
+          console.log('ℹ️ No session found');
         }
         
         setLoading(false);
       } catch (err) {
-        console.error('Failed to get session:', err);
+        console.error('❌ Failed to get session:', err);
         if (mounted) setLoading(false);
       }
     };

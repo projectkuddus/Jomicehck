@@ -73,15 +73,23 @@ const AppContent: React.FC = () => {
     
     // OAuth callback - Supabase redirects here with access_token
     if (hash.includes('access_token') || hash.includes('type=recovery')) {
-      // Clear the hash immediately to prevent issues
-      window.history.replaceState(null, '', window.location.pathname);
-      
-      // If it's a password reset, open auth modal
+      // If it's a password reset, open auth modal and clear hash
       if (hash.includes('type=recovery')) {
         setIsAuthOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
       }
-      // For OAuth, the session will be processed by AuthContext
-      // and the modal will close automatically when profile loads
+      // For OAuth: DON'T clear hash immediately - Supabase needs it to process the session!
+      // The hash will be cleared by Supabase after it processes the token
+      // We'll clear it manually after a delay to ensure Supabase has processed it
+      if (hash.includes('access_token')) {
+        // Wait for Supabase to process the OAuth callback
+        setTimeout(() => {
+          // Clear hash after Supabase has had time to process it
+          if (window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }, 2000); // Give Supabase 2 seconds to process
+      }
     }
   }, []);
 

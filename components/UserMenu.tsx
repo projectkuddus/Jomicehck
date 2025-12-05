@@ -56,8 +56,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     window.location.replace('/');
   };
 
-  // Simple loading state - show briefly, max 2 seconds
-  if (loading) {
+  // Simple loading state - show briefly, max 3 seconds
+  // But if we have a user, show the user menu even if still loading profile
+  if (loading && !user) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl animate-pulse">
         <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
@@ -67,7 +68,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
   }
 
   // Not configured or not logged in - show login button
-  if (!isConfigured || !user) {
+  // Only show login if we're sure there's no user (not just loading)
+  if (!isConfigured || (!user && !loading)) {
     return (
       <button
         onClick={onOpenAuth}
@@ -76,6 +78,23 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
         <User size={18} />
         <span className="hidden sm:inline">Login</span>
       </button>
+    );
+  }
+
+  // If we have a user but profile is still loading, show basic user info
+  if (user && !profile && loading) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl">
+        <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-sm uppercase">
+          {user.email?.charAt(0) || 'U'}
+        </div>
+        <div className="hidden sm:block text-left">
+          <div className="text-sm font-semibold text-slate-700">Loading...</div>
+          <div className="text-xs text-slate-500 max-w-[120px] truncate">
+            {user.email || 'User'}
+          </div>
+        </div>
+      </div>
     );
   }
 

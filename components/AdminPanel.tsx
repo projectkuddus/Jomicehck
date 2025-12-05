@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
   Users, 
   CreditCard, 
@@ -90,91 +89,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   };
 
   const fetchData = async () => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase not configured');
-      return;
-    }
-
     setLoading(true);
+    setError('');
+    
     try {
-      // Fetch all users
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order(sortField, { ascending: sortOrder === 'asc' });
-
-      if (usersError) throw usersError;
-
-      // Fetch payment transactions
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payment_transactions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Get user emails for payments
-      let paymentsWithEmails: PaymentTransaction[] = [];
-      if (!paymentsError && paymentsData) {
-        paymentsWithEmails = await Promise.all(
-          paymentsData.map(async (payment) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('email')
-              .eq('id', payment.user_id)
-              .single();
-            return { ...payment, user_email: profile?.email || 'Unknown' };
-          })
-        );
-      }
-
-      // Add payment info to each user
-      const usersWithPayments = (usersData || []).map(user => {
-        const userPayments = paymentsWithEmails.filter(p => p.user_id === user.id && p.status === 'completed');
-        const totalPaid = userPayments.reduce((sum, p) => sum + p.amount, 0);
-        const transactionIds = userPayments.map(p => p.transaction_id).filter(Boolean) as string[];
-        const lastPayment = userPayments.length > 0 ? userPayments[0].created_at : undefined;
-
-        return {
-          ...user,
-          payment_info: {
-            totalPaid,
-            totalPayments: userPayments.length,
-            lastPayment,
-            transactionIds
-          }
-        };
+      // Use admin API endpoint (uses service role key server-side)
+      const adminPassword = ADMIN_PASSWORD;
+      const response = await fetch(`/api/admin-data?password=${encodeURIComponent(adminPassword)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      setUsers(usersWithPayments);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch admin data' }));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
 
-      // Set payments for Payments tab (limit to 100 for display)
-      setPayments(paymentsWithEmails.slice(0, 100));
+      const data = await response.json();
 
-      // Calculate stats
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch admin data');
+      }
 
-      const totalUsers = usersData?.length || 0;
-      const totalCredits = usersData?.reduce((sum, u) => sum + (u.credits || 0), 0) || 0;
-      const usersToday = usersData?.filter(u => new Date(u.created_at) >= today).length || 0;
-      const usersThisWeek = usersData?.filter(u => new Date(u.created_at) >= weekAgo).length || 0;
+      // Sort users based on current sort settings
+      let sortedUsers = [...(data.users || [])];
+      if (sortField === 'credits') {
+        sortedUsers.sort((a, b) => {
+          const diff = (a.credits || 0) - (b.credits || 0);
+          return sortOrder === 'asc' ? diff : -diff;
+        });
+      } else {
+        sortedUsers.sort((a, b) => {
+          const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return sortOrder === 'asc' ? diff : -diff;
+        });
+      }
 
-      // Calculate payment stats
-      const completedPayments = paymentsWithEmails.filter(p => p.status === 'completed');
-      const totalRevenue = completedPayments.reduce((sum, p) => sum + p.amount, 0);
-      const paymentsToday = paymentsWithEmails.filter(p => {
-        const paymentDate = new Date(p.created_at);
-        return paymentDate >= today;
-      }).length;
-
-      setStats({
-        totalUsers,
-        totalCredits,
-        usersToday,
-        usersThisWeek,
-        totalRevenue,
-        paymentsToday
-      } as AdminStats);
+      setUsers(sortedUsers);
+      setPayments(data.payments || []);
+      setStats(data.stats || null);
 
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');

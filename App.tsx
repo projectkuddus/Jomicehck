@@ -252,7 +252,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden print:hidden">
       <Header 
         onNavigate={setCurrentPage} 
         currentPage={currentPage} 
@@ -292,7 +292,7 @@ const AppContent: React.FC = () => {
         {currentPage === 'home' ? (
           <>
             {/* LEFT PANEL: Controls & Input (Always Visible) */}
-            <section className="w-full md:w-5/12 lg:w-[500px] xl:w-[600px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm md:shadow-none h-full">
+            <section className="w-full md:w-5/12 lg:w-[500px] xl:w-[600px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm md:shadow-none h-full print:hidden">
               
               {/* Scrollable Content Container */}
               <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
@@ -470,7 +470,7 @@ const AppContent: React.FC = () => {
               {analysis.result && !analysis.isLoading ? (
                 <div className="h-full flex flex-col animate-in fade-in duration-500">
                    {/* Report Toolbar & Tabs */}
-                   <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-6 shadow-sm z-10 shrink-0">
+                   <div className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-6 shadow-sm z-10 shrink-0 print:hidden">
                       
                       {/* Tabs */}
                       <div className="flex items-center gap-1 h-full">
@@ -502,8 +502,8 @@ const AppContent: React.FC = () => {
                    {/* Main Content Area */}
                    <div className="flex-1 overflow-hidden relative">
                       {activeTab === 'report' ? (
-                        <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-10 bg-slate-100/50">
-                          <div className="max-w-4xl mx-auto bg-white min-h-full shadow-sm border border-slate-200 rounded-xl p-8 md:p-12">
+                        <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-10 bg-slate-100/50 print:p-0 print:bg-white">
+                          <div className="max-w-4xl mx-auto bg-white min-h-full shadow-sm border border-slate-200 rounded-xl p-8 md:p-12 print:max-w-full print:shadow-none print:border-none print:p-4">
                              <AnalysisReport report={analysis.result} />
                           </div>
                         </div>

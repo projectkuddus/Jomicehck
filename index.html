@@ -247,6 +247,57 @@
       .markdown-body li { margin-bottom: 0.25em; color: #334155; }
       .markdown-body strong { font-weight: 700; color: #0f172a; }
       .markdown-body blockquote { border-left: 4px solid #22c55e; padding-left: 1em; color: #475569; font-style: italic; background: #f0fdf4; padding: 1rem; border-radius: 0.25rem; }
+      
+      /* Print Styles - Only show report content */
+      @media print {
+        /* Hide everything except the report */
+        body * {
+          visibility: hidden;
+        }
+        
+        /* Show only the report container */
+        .print-report,
+        .print-report * {
+          visibility: visible;
+        }
+        
+        /* Position report at top */
+        .print-report {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+        
+        /* Hide buttons and non-essential elements */
+        .print-report button,
+        .print-report .no-print {
+          display: none !important;
+        }
+        
+        /* Ensure proper page breaks */
+        .print-report > div {
+          page-break-inside: avoid;
+        }
+        
+        /* Remove backgrounds for printing */
+        .print-report {
+          background: white !important;
+        }
+        
+        /* Ensure text is black for printing */
+        .print-report * {
+          color: #000 !important;
+        }
+        
+        /* Remove shadows and borders for cleaner print */
+        .print-report {
+          box-shadow: none !important;
+          border: none !important;
+        }
+      }
     </style>
     
     <!-- Google Analytics -->

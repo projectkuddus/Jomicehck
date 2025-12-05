@@ -55,37 +55,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     setIsOpen(false);
   };
 
-  // Show loading state while checking auth (with timeout fallback)
-  const [showFallback, setShowFallback] = useState(false);
-  
-  useEffect(() => {
-    if (loading) {
-      const timer = setTimeout(() => setShowFallback(true), 2000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowFallback(false);
-    }
-  }, [loading]);
-
-  if (loading && !showFallback) {
+  // Simple loading state - show briefly, max 2 seconds
+  if (loading) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl">
-        <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-600 rounded-full animate-spin"></div>
-        <span className="hidden sm:inline text-sm text-slate-600">Loading...</span>
+      <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl animate-pulse">
+        <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
+        <span className="hidden sm:inline text-sm text-slate-400">...</span>
       </div>
-    );
-  }
-
-  // If loading takes too long, show login button
-  if (loading && showFallback) {
-    return (
-      <button
-        onClick={onOpenAuth}
-        className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl transition-colors"
-      >
-        <User size={18} />
-        <span className="hidden sm:inline">Login</span>
-      </button>
     );
   }
 
@@ -102,21 +78,11 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     );
   }
 
-  // User is logged in but profile is still loading - show basic user info
-  if (!profile) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl">
-        <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-sm uppercase">
-          {user.email?.charAt(0) || 'U'}
-        </div>
-        <div className="hidden sm:block text-left">
-          <div className="text-sm font-semibold text-slate-700">Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  // User is logged in - show user menu
+  // If profile is loading, show basic info
+  const displayEmail = profile?.email || user.email || 'User';
+  const displayCredits = profile?.credits ?? 0;
 
-  // Logged in - show user menu
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -124,14 +90,14 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
         className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
       >
         <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-sm uppercase">
-          {profile.email?.charAt(0) || 'U'}
+          {displayEmail.charAt(0)}
         </div>
         <div className="hidden sm:block text-left">
           <div className="text-sm font-semibold text-slate-700">
-            {profile.credits} Credits
+            {displayCredits} Credits
           </div>
           <div className="text-xs text-slate-500 max-w-[120px] truncate">
-            {profile.email}
+            {displayEmail}
           </div>
         </div>
         <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -147,41 +113,43 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
               <span className="text-sm text-brand-700 font-medium">Available Credits</span>
               <CreditCard size={16} className="text-brand-600" />
             </div>
-            <div className="text-3xl font-black text-brand-700">{profile.credits}</div>
+            <div className="text-3xl font-black text-brand-700">{displayCredits}</div>
           </div>
 
-          {/* Referral Section */}
-          <div className="p-4 border-b border-slate-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-              <Gift size={16} className="text-amber-500" />
-              Your Referral Code
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-2 bg-slate-100 rounded-lg font-mono font-bold tracking-wider text-center">
-                {profile.referral_code}
+          {/* Referral Section - only show if profile loaded */}
+          {profile?.referral_code && (
+            <div className="p-4 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                <Gift size={16} className="text-amber-500" />
+                Your Referral Code
               </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3 py-2 bg-slate-100 rounded-lg font-mono font-bold tracking-wider text-center">
+                  {profile.referral_code}
+                </div>
+                <button
+                  onClick={handleCopyCode}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  {copied ? <CheckCircle2 size={16} className="text-green-600" /> : <Copy size={16} />}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Earn {REFERRAL_BONUS_CREDITS} credits for each friend who signs up!
+              </p>
+              {(profile.total_referrals ?? 0) > 0 && (
+                <p className="text-xs text-green-600 font-medium mt-1">
+                  ✓ {profile.total_referrals} friends referred
+                </p>
+              )}
               <button
-                onClick={handleCopyCode}
-                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                onClick={handleShare}
+                className="w-full mt-3 py-2 px-3 bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
               >
-                {copied ? <CheckCircle2 size={16} className="text-green-600" /> : <Copy size={16} />}
+                <Share2 size={14} /> Share & Earn
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Earn {REFERRAL_BONUS_CREDITS} credits for each friend who signs up!
-            </p>
-            {profile.total_referrals > 0 && (
-              <p className="text-xs text-green-600 font-medium mt-1">
-                ✓ {profile.total_referrals} friends referred
-              </p>
-            )}
-            <button
-              onClick={handleShare}
-              className="w-full mt-3 py-2 px-3 bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            >
-              <Share2 size={14} /> Share & Earn
-            </button>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="p-2">
@@ -200,4 +168,3 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
 };
 
 export default UserMenu;
-

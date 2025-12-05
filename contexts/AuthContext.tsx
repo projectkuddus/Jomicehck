@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const isConfigured = isSupabaseConfigured();
 
   // Generate a unique referral code
@@ -114,87 +115,92 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize auth state
   useEffect(() => {
+    // Not configured - just disable loading and let app work without auth
     if (!isConfigured) {
       setLoading(false);
       return;
     }
 
-    // Timeout fallback - force loading to false after 5 seconds
+    let mounted = true;
+    
+    // Force loading to end after 3 seconds - prevents infinite loading
     const timeoutId = setTimeout(() => {
-      console.warn('Auth initialization timeout - forcing loading to false');
-      setLoading(false);
-    }, 5000);
-
-    // Get initial session with error handling
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        clearTimeout(timeoutId);
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          setLoading(false);
-          return;
-        }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchProfile(session.user.id, session.user.email)
-            .then(setProfile)
-            .catch(err => {
-              console.error('Error fetching profile:', err);
-              setProfile(null);
-            })
-            .finally(() => {
-              setLoading(false);
-            });
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        clearTimeout(timeoutId);
-        console.error('Session fetch error:', err);
+      if (mounted && loading) {
+        console.warn('Auth timeout - continuing without blocking UI');
         setLoading(false);
-      });
+      }
+    }, 3000);
 
-    return () => clearTimeout(timeoutId);
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         try {
-          const profile = await fetchProfile(session.user.id, session.user.email);
-          setProfile(profile);
+          const profileData = await fetchProfile(session.user.id, session.user.email);
+          if (mounted) setProfile(profileData);
         } catch (err) {
-          console.error('Error fetching profile on auth change:', err);
-          setProfile(null);
+          console.error('Profile fetch failed:', err);
+          // Don't block - just continue without profile
         }
       } else {
         setProfile(null);
       }
+      
+      // Auth state changed - loading is done
+      if (mounted) setLoading(false);
     });
 
+    // Get initial session
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('Session error:', error.message);
+          setLoading(false);
+          return;
+        }
+        
+        // If no session, just stop loading
+        if (!session) {
+          setLoading(false);
+          return;
+        }
+        
+        // Session exists - update state
+        setSession(session);
+        setUser(session.user);
+        
+        // Try to get profile
+        fetchProfile(session.user.id, session.user.email)
+          .then(profileData => {
+            if (mounted) setProfile(profileData);
+          })
+          .catch(err => {
+            console.error('Initial profile fetch failed:', err);
+          })
+          .finally(() => {
+            if (mounted) setLoading(false);
+          });
+      })
+      .catch(err => {
+        console.error('getSession failed:', err);
+        if (mounted) setLoading(false);
+      });
+
+    // Cleanup
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
       clearTimeout(timeoutId);
+      subscription.unsubscribe();
     };
   }, [isConfigured]);
 
-  // Refresh profile when user changes (fallback) - only if profile is missing
-  useEffect(() => {
-    if (user && !profile && !loading && isConfigured) {
-      fetchProfile(user.id, user.email)
-        .then(setProfile)
-        .catch(err => {
-          console.error('Fallback profile fetch error:', err);
-        });
-    }
-  }, [user?.id]); // Only depend on user ID to avoid infinite loops
+  // Note: Profile refresh is now handled in the main useEffect above
 
   // Send OTP code to email (6-digit code, not magic link)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {

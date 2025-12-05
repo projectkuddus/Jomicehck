@@ -262,20 +262,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Sign out - completely clear all state and storage
   const signOut = async () => {
-    try {
-      // Sign out from Supabase first (this clears Supabase session)
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-    
-    // Clear local React state
+    // Clear local React state FIRST (immediate UI update)
     setUser(null);
     setProfile(null);
     setSession(null);
     
-    // Clear ALL Supabase-related localStorage items
-    // Supabase stores session in keys like: sb-{project-ref}-auth-token
+    // Clear ALL Supabase-related localStorage items BEFORE signing out
+    // This prevents Supabase from restoring session on refresh
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     if (supabaseUrl) {
       try {
@@ -305,6 +298,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       sessionStorage.clear();
     } catch (err) {
       console.error('Error clearing sessionStorage:', err);
+    }
+    
+    // Then sign out from Supabase (this triggers SIGNED_OUT event)
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      console.error('Sign out error:', err);
     }
   };
 

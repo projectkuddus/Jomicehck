@@ -67,7 +67,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Create pending payment record
+    // Note: Service role key should bypass RLS, but if it doesn't, we need to check RLS policies
     try {
+      console.log('Attempting to insert payment:', {
+        user_id: userId,
+        package_id: packageId,
+        amount: packageData.price,
+        credits: packageData.credits,
+        payment_method: 'bkash',
+        status: 'pending',
+        transaction_id: transactionId.trim(),
+      });
+
       const { data, error } = await supabase
         .from('payment_transactions')
         .insert({

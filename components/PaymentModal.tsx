@@ -12,10 +12,10 @@ interface PaymentModalProps {
 }
 
 const creditPackages = [
-  { credits: 20, price: 199, perPage: 1 }, // 1 credit = 1 page
-  { credits: 50, price: 399, perPage: 1, popular: true }, // 1 credit = 1 page
-  { credits: 100, price: 699, perPage: 1 }, // 1 credit = 1 page
-  { credits: 250, price: 1499, perPage: 1 }, // 1 credit = 1 page
+  { credits: 20, price: 199, perCredit: 9.95 }, // 199/20 = 9.95 per credit
+  { credits: 50, price: 399, perCredit: 7.98, popular: true }, // 399/50 = 7.98 per credit
+  { credits: 100, price: 699, perCredit: 6.99 }, // 699/100 = 6.99 per credit
+  { credits: 250, price: 1499, perCredit: 6.00 }, // 1499/250 = 6.00 per credit
 ];
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
@@ -194,7 +194,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   )}
                   <div className="font-bold text-slate-900 text-sm sm:text-base">{pkg.credits} Credits</div>
                   <div className="text-lg sm:text-xl font-extrabold text-slate-900">৳{pkg.price}</div>
-                  <div className="text-[10px] sm:text-xs text-slate-500">৳{pkg.perPage}/page</div>
+                  <div className="text-[10px] sm:text-xs text-slate-500">৳{pkg.perCredit?.toFixed(2)}/credit</div>
                   {selectedPackage === pkg.credits && (
                     <div className="absolute top-3 right-3">
                       <CheckCircle size={18} className="text-brand-600" />

@@ -121,10 +121,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Timeout fallback - force loading to false after 5 seconds
     const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Auth initialization timeout - forcing loading to false');
-        setLoading(false);
-      }
+      console.warn('Auth initialization timeout - forcing loading to false');
+      setLoading(false);
     }, 5000);
 
     // Get initial session with error handling

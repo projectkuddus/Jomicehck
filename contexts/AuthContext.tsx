@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => subscription.unsubscribe();
   }, [isConfigured]);
 
-  // Send OTP to email
+  // Send OTP code to email (6-digit code, not magic link)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
@@ -156,6 +156,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: email.toLowerCase().trim(),
         options: {
           shouldCreateUser: true,
+          // This tells Supabase we want to verify with a code, not a link
+          emailRedirectTo: undefined,
         },
       });
 

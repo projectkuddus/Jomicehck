@@ -7,8 +7,8 @@ import { supabase } from './lib/supabase';
 interface PaymentRequest {
   userId: string;
   packageId: string; // 'starter' | 'popular' | 'pro' | 'agent'
-  paymentMethod: 'bkash' | 'nagad' | 'sslcommerz';
-  transactionId?: string; // For manual verification
+  paymentMethod: 'bkash' | 'nagad';
+  transactionId: string; // Required for manual verification
 }
 
 const CREDIT_PACKAGES: Record<string, { credits: number; price: number }> = {
@@ -45,56 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ success: false, error: 'Invalid package' });
     }
 
-    // For SSLCommerz, we'll create a payment session
-    if (paymentMethod === 'sslcommerz') {
-      // TODO: Integrate SSLCommerz API here
-      // For now, return payment URL (you'll need SSLCommerz credentials)
-      const sslcommerzStoreId = process.env.SSLCOMMERZ_STORE_ID;
-      const sslcommerzStorePassword = process.env.SSLCOMMERZ_STORE_PASSWORD;
-      const isLive = process.env.SSLCOMMERZ_IS_LIVE === 'true';
-
-      if (!sslcommerzStoreId || !sslcommerzStorePassword) {
-        // Fallback: Create pending payment record for manual verification
-        const { data, error } = await supabase
-          .from('payment_transactions')
-          .insert({
-            user_id: userId,
-            package_id: packageId,
-            amount: packageData.price,
-            credits: packageData.credits,
-            payment_method: paymentMethod,
-            status: 'pending',
-            transaction_id: transactionId || `PENDING_${Date.now()}`,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Payment record error:', error);
-          return res.status(500).json({ error: 'Failed to create payment record' });
-        }
-
-        return res.status(200).json({
-          success: true,
-          paymentId: data.id,
-          status: 'pending_verification',
-          message: 'Payment pending manual verification. Please send payment and contact support with transaction ID.',
-          amount: packageData.price,
-          credits: packageData.credits,
-        });
-      }
-
-      // SSLCommerz integration would go here
-      // Return payment URL for redirect
-      return res.status(200).json({
-        success: true,
-        paymentUrl: `https://${isLive ? 'securepay' : 'sandbox'}.sslcommerz.com/EasyCheckOut/${sslcommerzStoreId}`,
-        amount: packageData.price,
-        credits: packageData.credits,
-      });
-    }
-
-    // For manual verification (bKash/Nagad)
+    // Only manual verification (bKash/Nagad) is supported
     if (paymentMethod === 'bkash' || paymentMethod === 'nagad') {
       if (!transactionId) {
         return res.status(400).json({ success: false, error: 'Transaction ID required for manual payment' });

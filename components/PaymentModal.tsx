@@ -20,11 +20,10 @@ const creditPackages = [
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
   const { user, refreshProfile } = useAuth();
-  const [method, setMethod] = useState<'bkash' | 'nagad' | 'sslcommerz'>('bkash');
+  const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState('');
-  const [showTransactionInput, setShowTransactionInput] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(50); // Default to popular
 
   // Set recommended package on mount
@@ -49,10 +48,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       return;
     }
 
-    // For bKash/Nagad, require transaction ID
-    if ((method === 'bkash' || method === 'nagad') && !transactionId.trim()) {
-      setShowTransactionInput(true);
-      setError('Please enter your transaction ID');
+    // Require transaction ID
+    if (!transactionId.trim()) {
+      setError('Please enter your transaction ID after sending payment');
       return;
     }
 
@@ -109,31 +107,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         throw new Error(data.error || 'Payment failed');
       }
 
-      if (data.status === 'pending_verification') {
-        // Manual verification needed
+      // All payments are manual verification
+      if (data.status === 'pending_verification' || data.success) {
         setError(null);
-        alert(`Payment submitted! Your ${data.credits} credits will be added after verification. Payment ID: ${data.paymentId}`);
-        // Refresh profile to get updated credits (if any were added)
+        // Show success message
+        alert(`✅ Payment submitted successfully!\n\nYour ${data.credits} credits will be added after admin verification (usually within 24 hours).\n\nPayment ID: ${data.paymentId}\n\nYou can check your payment status in the admin panel.`);
+        // Refresh profile
         try {
           await refreshProfile();
         } catch (err) {
           console.error('Profile refresh error:', err);
-          // Don't block - payment was submitted successfully
         }
         onConfirm();
         onClose();
-      } else if (data.paymentUrl) {
-        // SSLCommerz redirect
-        window.location.href = data.paymentUrl;
       } else {
-        // Success
-        try {
-          await refreshProfile();
-        } catch (err) {
-          console.error('Profile refresh error:', err);
-        }
-        onConfirm();
-        onClose();
+        throw new Error('Unexpected response from server');
       }
     } catch (err: any) {
       console.error('❌ Payment error:', err);
@@ -147,7 +135,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
     if (!isOpen) {
       setTransactionId('');
       setError(null);
-      setShowTransactionInput(false);
     }
   }, [isOpen]);
 
@@ -236,9 +223,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
 
           {/* Payment Methods */}
           <div className="text-sm font-semibold text-slate-700 mb-3">Payment Method</div>
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <div 
-              onClick={() => { setMethod('bkash'); setShowTransactionInput(true); }}
+              onClick={() => setMethod('bkash')}
               className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
               <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs">bKash</div>
@@ -249,7 +236,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
             </div>
 
             <div 
-              onClick={() => { setMethod('nagad'); setShowTransactionInput(true); }}
+              onClick={() => setMethod('nagad')}
               className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
               <div className="w-10 h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-xs">Nagad</div>
@@ -258,49 +245,43 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
               </div>
               {method === 'nagad' && <CheckCircle size={16} className="text-orange-600" />}
             </div>
-
-            <div 
-              onClick={() => { setMethod('sslcommerz'); setShowTransactionInput(false); }}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'sslcommerz' ? 'border-green-500 bg-green-50' : 'border-slate-100 hover:border-slate-200'}`}
-            >
-              <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-xs">Card</div>
-              <div className="flex-1">
-                <p className="font-bold text-slate-800 text-sm">Card</p>
-              </div>
-              {method === 'sslcommerz' && <CheckCircle size={16} className="text-green-600" />}
-            </div>
           </div>
 
-          {/* Transaction ID Input for bKash/Nagad */}
-          {(showTransactionInput && (method === 'bkash' || method === 'nagad')) && (
+          {/* Payment Instructions and Transaction ID Input */}
+          {(
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <div className="mb-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">Payment Instructions:</p>
-                <div className="bg-white p-3 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-800 mb-2">
-                    <strong>Step 1:</strong> Send <strong>৳{currentPackage.price}</strong> to:
+                <p className="text-sm font-semibold text-blue-900 mb-2">📱 Payment Instructions:</p>
+                <div className="bg-white p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800 mb-3">
+                    <strong>Step 1:</strong> Send <strong className="text-lg">৳{currentPackage.price}</strong> to:
                   </p>
-                  <p className="text-lg font-bold text-blue-900 mb-1">
-                    {method === 'bkash' ? 'bKash: 01613078101' : 'Nagad: 01613078101'}
+                  <div className="bg-blue-50 p-3 rounded-lg mb-3">
+                    <p className="text-2xl font-bold text-blue-900 text-center">
+                      {method === 'bkash' ? 'bKash: 01613078101' : 'Nagad: 01613078101'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-blue-600 mb-2">
+                    💡 Open your {method === 'bkash' ? 'bKash' : 'Nagad'} app and send the money
                   </p>
                   <p className="text-xs text-blue-600">
-                    Send money and copy the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app
+                    📋 Copy the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app after sending
                   </p>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Transaction ID ({method === 'bkash' ? 'bKash' : 'Nagad'})
+                  <strong>Step 2:</strong> Enter Transaction ID
                 </label>
                 <input
                   type="text"
                   value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  placeholder={`Enter your ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
+                  placeholder={`Enter ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono text-center text-lg"
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  <strong>Step 2:</strong> After sending payment, enter the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app.
+                <p className="text-xs text-slate-500 mt-2 text-center">
+                  ⏳ After submission, admin will verify and add credits within 24 hours
                 </p>
               </div>
             </div>
@@ -333,7 +314,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
           
           <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
             <Lock size={12} />
-            <span>Secure payment via {method === 'bkash' ? 'bKash' : 'Nagad'}</span>
+            <span>Manual verification - Credits added after admin approval</span>
           </div>
         </div>
       </div>

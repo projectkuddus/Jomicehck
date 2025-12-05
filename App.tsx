@@ -229,33 +229,61 @@ const AppContent: React.FC = () => {
   }, [files, user, profile]);
 
   const handleStartAnalysis = async () => {
-    if (files.length === 0) return;
+    console.log('🔍 Analyze button clicked:', {
+      filesCount: files.length,
+      needsLogin: priceCalculation.needsLogin,
+      canAfford: priceCalculation.canAfford,
+      creditsNeeded: priceCalculation.creditsNeeded,
+      userCredits: priceCalculation.userCredits,
+    });
+
+    if (files.length === 0) {
+      console.warn('⚠️ No files to analyze');
+      return;
+    }
     
     // If not logged in, prompt to login
     if (priceCalculation.needsLogin) {
+      console.log('🔐 User needs to login');
       setIsAuthOpen(true);
       return;
     }
     
     // If logged in but not enough credits, open payment
     if (!priceCalculation.canAfford) {
+      console.log('💳 User needs more credits');
       setIsPaymentOpen(true);
       return;
     }
     
-    // Deduct credits and run analysis
-    const success = await useCredits(priceCalculation.creditsNeeded);
-    if (success) {
-      runAnalysis();
-    } else {
-      // If credit deduction failed, show error
+    try {
+      console.log('💰 Deducting credits...', priceCalculation.creditsNeeded);
+      // Deduct credits and run analysis
+      const success = await useCredits(priceCalculation.creditsNeeded);
+      console.log('💰 Credit deduction result:', success);
+      
+      if (success) {
+        console.log('✅ Credits deducted, starting analysis...');
+        runAnalysis();
+      } else {
+        // If credit deduction failed, show error
+        console.error('❌ Credit deduction failed');
+        setAnalysis({
+          isLoading: false,
+          isStreaming: false,
+          result: null,
+          error: 'Failed to deduct credits. Please refresh and try again, or contact support if the issue persists.',
+        });
+        setIsPaymentOpen(true);
+      }
+    } catch (error: any) {
+      console.error('❌ Error in handleStartAnalysis:', error);
       setAnalysis({
         isLoading: false,
         isStreaming: false,
         result: null,
-        error: 'Failed to deduct credits. Please refresh and try again, or contact support if the issue persists.',
+        error: error.message || 'Failed to start analysis. Please try again.',
       });
-      setIsPaymentOpen(true);
     }
   };
 
@@ -266,12 +294,29 @@ const AppContent: React.FC = () => {
   };
 
   const runAnalysis = async () => {
+    console.log('🚀 Starting analysis...', { filesCount: files.length });
+    
     if (files.length === 0) {
+      console.warn('⚠️ No files to analyze');
       setAnalysis({
         isLoading: false,
         isStreaming: false,
         result: null,
         error: 'Please upload at least one document to analyze.',
+        progress: undefined
+      });
+      return;
+    }
+
+    // Check if all files have base64Data
+    const filesWithoutData = files.filter(f => !f.base64Data);
+    if (filesWithoutData.length > 0) {
+      console.error('❌ Some files are missing base64Data:', filesWithoutData.length);
+      setAnalysis({
+        isLoading: false,
+        isStreaming: false,
+        result: null,
+        error: `${filesWithoutData.length} file(s) are not ready yet. Please wait for upload to complete.`,
         progress: undefined
       });
       return;
@@ -287,8 +332,10 @@ const AppContent: React.FC = () => {
     setActiveTab('report'); 
 
     try {
+      console.log('📤 Calling analyzeDocuments API...');
       const resultData = await analyzeDocuments(files, (current, total, currentBatch, totalBatches) => {
         // Update progress in real-time
+        console.log('📊 Analysis progress:', { current, total, currentBatch, totalBatches });
         setAnalysis(prev => ({
           ...prev,
           progress: {
@@ -300,6 +347,8 @@ const AppContent: React.FC = () => {
         }));
       });
       
+      console.log('✅ Analysis complete:', resultData);
+      
       setAnalysis({
         isLoading: false,
         isStreaming: false,
@@ -309,7 +358,12 @@ const AppContent: React.FC = () => {
       });
       saveToHistory(resultData); // Auto-save on success
     } catch (err: any) {
-      console.error('Analysis error:', err);
+      console.error('❌ Analysis error:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
       setAnalysis({
         isLoading: false,
         isStreaming: false,

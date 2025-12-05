@@ -20,7 +20,7 @@ const creditPackages = [
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
   const { user, refreshProfile } = useAuth();
-  const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
+  const [method, setMethod] = useState<'bkash' | 'nagad' | 'sslcommerz'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState('');

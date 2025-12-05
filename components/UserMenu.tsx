@@ -51,14 +51,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
   };
 
   const handleSignOut = async () => {
-    // Close menu immediately
     setIsOpen(false);
-    
-    // Sign out and wait for it to complete
     await signOut();
-    
-    // Force a hard reload to clear everything
-    // Use window.location.replace to prevent back button issues
     window.location.replace('/');
   };
 

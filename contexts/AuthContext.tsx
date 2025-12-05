@@ -20,16 +20,11 @@ interface AuthContextType {
   loading: boolean;
   isConfigured: boolean;
   
-  // Auth methods - OTP for initial signup only
-  sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
-  setPasswordAfterOTP: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  
-  // Password-based auth (main login method)
-  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  // Simple auth methods
+  signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   
   // Credit methods
   addCredits: (amount: number) => Promise<boolean>;
@@ -53,18 +48,17 @@ export const CREDIT_PACKAGES = [
 ];
 
 // Referral bonus
-export const REFERRAL_BONUS_CREDITS = 10; // Both referrer and referee get 10 credits
-export const FREE_SIGNUP_CREDITS = 5; // Free credits on signup
+export const REFERRAL_BONUS_CREDITS = 10;
+export const FREE_SIGNUP_CREDITS = 5;
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
   const isConfigured = isSupabaseConfigured();
 
-  // Generate a unique referral code
+  // Generate referral code
   const generateReferralCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = 'JOMI';
@@ -74,253 +68,137 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return code;
   };
 
-  // Fetch user profile from database
-  const fetchProfile = async (userId: string, userEmail?: string) => {
+  // Fetch or create profile
+  const fetchProfile = async (userId: string, userEmail?: string | null): Promise<UserProfile | null> => {
     try {
-      const { data, error } = await supabase
+      // First, try to get existing profile
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create one
+      if (existingProfile) {
+        return existingProfile as UserProfile;
+      }
+
+      // If no profile exists, create one
+      if (fetchError && fetchError.code === 'PGRST116') {
         const newProfile = {
           id: userId,
           email: userEmail || '',
           credits: FREE_SIGNUP_CREDITS,
           referral_code: generateReferralCode(),
-          referred_by: null,
           total_referrals: 0,
         };
 
-        const { data: created, error: createError } = await supabase
+        const { data: createdProfile, error: createError } = await supabase
           .from('profiles')
-          .insert([newProfile])
+          .insert(newProfile)
           .select()
           .single();
 
         if (createError) {
-          console.error('Error creating profile:', createError);
+          console.error('Failed to create profile:', createError);
           return null;
         }
-        return created as UserProfile;
+
+        return createdProfile as UserProfile;
       }
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
-      }
-
-      return data as UserProfile;
+      console.error('Profile fetch error:', fetchError);
+      return null;
     } catch (err) {
-      console.error('Profile fetch error:', err);
+      console.error('Profile error:', err);
       return null;
     }
   };
 
   // Initialize auth state
   useEffect(() => {
-    // Not configured - just disable loading and let app work without auth
     if (!isConfigured) {
       setLoading(false);
       return;
     }
 
     let mounted = true;
-    
-    // Force loading to end after 1 second - faster UI
-    const timeoutId = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth timeout - continuing without blocking UI');
-        setLoading(false);
-      }
-    }, 1000);
 
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
+
+      console.log('Auth event:', event);
       
-      // Handle SIGNED_OUT event explicitly
       if (event === 'SIGNED_OUT') {
-        setSession(null);
         setUser(null);
         setProfile(null);
+        setSession(null);
         setLoading(false);
         return;
       }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        try {
-          const profileData = await fetchProfile(session.user.id, session.user.email);
-          if (mounted) setProfile(profileData);
-        } catch (err) {
-          console.error('Profile fetch failed:', err);
-          // Don't block - just continue without profile
-        }
+
+      if (newSession?.user) {
+        setSession(newSession);
+        setUser(newSession.user);
+        
+        // Fetch profile (defer to avoid blocking)
+        setTimeout(async () => {
+          if (mounted) {
+            const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
+            if (mounted) setProfile(profileData);
+          }
+        }, 0);
       } else {
+        setUser(null);
         setProfile(null);
+        setSession(null);
       }
       
-      // Auth state changed - loading is done
-      if (mounted) setLoading(false);
+      setLoading(false);
     });
 
-    // Get initial session - but check if localStorage was cleared first (logout)
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0];
-    const authTokenKey = projectRef ? `sb-${projectRef}-auth-token` : null;
-    
-    // If auth token was explicitly cleared (logout), don't restore session
-    const wasLoggedOut = authTokenKey && !localStorage.getItem(authTokenKey);
-    
-    if (!wasLoggedOut) {
-      supabase.auth.getSession()
-        .then(({ data: { session }, error }) => {
-          if (!mounted) return;
-          
-          if (error) {
-            console.error('Session error:', error.message);
-            setLoading(false);
-            return;
-          }
-          
-          // If no session, just stop loading
-          if (!session) {
-            setLoading(false);
-            return;
-          }
-          
-          // Session exists - update state
-          setSession(session);
-          setUser(session.user);
-          
-          // Try to get profile
-          fetchProfile(session.user.id, session.user.email)
-            .then(profileData => {
-              if (mounted) setProfile(profileData);
-            })
-            .catch(err => {
-              console.error('Initial profile fetch failed:', err);
-            })
-            .finally(() => {
-              if (mounted) setLoading(false);
-            });
-        })
-        .catch(err => {
-          console.error('getSession failed:', err);
-          if (mounted) setLoading(false);
-        });
-    } else {
-      // Was logged out - don't restore session
-      if (mounted) setLoading(false);
-    }
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
+      if (!mounted) return;
+      
+      if (initialSession?.user) {
+        setSession(initialSession);
+        setUser(initialSession.user);
+        
+        const profileData = await fetchProfile(initialSession.user.id, initialSession.user.email);
+        if (mounted) setProfile(profileData);
+      }
+      
+      setLoading(false);
+    });
 
-    // Cleanup
+    // Timeout fallback
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth timeout');
+        setLoading(false);
+      }
+    }, 3000);
+
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, [isConfigured]);
 
-  // Note: Profile refresh is now handled in the main useEffect above
-
-  // Send OTP code to email (for initial signup verification only)
-  const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  // Sign up with email and password
+  const signUp = async (email: string, password: string): Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
-    }
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase().trim(),
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: undefined,
-        },
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to send OTP' };
-    }
-  };
-
-  // Verify OTP (for initial signup - then user sets password)
-  const verifyOTP = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isConfigured) {
-      return { success: false, error: 'Auth not configured' };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: email.toLowerCase().trim(),
-        token,
-        type: 'email',
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      // After OTP verification, user is logged in temporarily
-      // They need to set a password next
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to verify OTP' };
-    }
-  };
-
-  // Set password after OTP verification (for new users)
-  const setPasswordAfterOTP = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isConfigured) {
-      return { success: false, error: 'Auth not configured' };
-    }
-
-    if (!password || password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
-    }
-
-    try {
-      // Update the user's password
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to set password' };
-    }
-  };
-
-  // Sign up with email and password (alternative method)
-  const signUpWithPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isConfigured) {
-      return { success: false, error: 'Auth not configured' };
-    }
-
-    if (!password || password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
     }
 
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
-        password: password,
+        password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: window.location.origin,
         },
       });
 
@@ -328,11 +206,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: error.message };
       }
 
-      // If email confirmation is required, user needs to verify
+      // Check if email confirmation is required
       if (data.user && !data.session) {
-        return { success: true, error: 'Please check your email to confirm your account' };
+        return { success: true, needsConfirmation: true };
       }
 
+      // User is logged in immediately (email confirmation disabled in Supabase)
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to sign up' };
@@ -340,15 +219,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Sign in with email and password
-  const signInWithPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
-        password: password,
+        password,
       });
 
       if (error) {
@@ -361,7 +240,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Send password reset email
+  // Sign out
+  const signOut = async () => {
+    // Clear state first
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    
+    // Clear localStorage
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Error clearing storage:', e);
+    }
+    
+    // Sign out from Supabase
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
+  };
+
+  // Reset password
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
@@ -369,7 +276,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/#reset`,
       });
 
       if (error) {
@@ -382,80 +289,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Update password (for logged-in users or after reset)
-  const updatePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isConfigured) {
-      return { success: false, error: 'Auth not configured' };
-    }
-
-    if (!newPassword || newPassword.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
-    }
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to update password' };
-    }
-  };
-
-  // Sign out - completely clear all state and storage
-  const signOut = async () => {
-    // Clear local React state FIRST (immediate UI update)
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-    
-    // Clear ALL Supabase-related localStorage items BEFORE signing out
-    // This prevents Supabase from restoring session on refresh
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    if (supabaseUrl) {
-      try {
-        // Extract project ref from URL (e.g., tyiuowhrdnaoxqrxpfbd from https://tyiuowhrdnaoxqrxpfbd.supabase.co)
-        const projectRef = supabaseUrl.split('//')[1]?.split('.')[0];
-        if (projectRef) {
-          // Clear the main auth token
-          localStorage.removeItem(`sb-${projectRef}-auth-token`);
-        }
-        
-        // Clear all keys that start with 'sb-' (Supabase storage)
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-      } catch (err) {
-        console.error('Error clearing localStorage:', err);
-      }
-    }
-    
-    // Clear sessionStorage as well
-    try {
-      sessionStorage.clear();
-    } catch (err) {
-      console.error('Error clearing sessionStorage:', err);
-    }
-    
-    // Then sign out from Supabase (this triggers SIGNED_OUT event)
-    try {
-      await supabase.auth.signOut({ scope: 'global' });
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-  };
-
-  // Add credits to user account
+  // Add credits
   const addCredits = async (amount: number): Promise<boolean> => {
     if (!profile) return false;
 
@@ -466,7 +300,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .eq('id', profile.id);
 
       if (error) {
-        console.error('Error adding credits:', error);
+        console.error('Add credits error:', error);
         return false;
       }
 
@@ -478,7 +312,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Use credits from user account
+  // Use credits
   const useCredits = async (amount: number): Promise<boolean> => {
     if (!profile || profile.credits < amount) return false;
 
@@ -489,7 +323,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .eq('id', profile.id);
 
       if (error) {
-        console.error('Error using credits:', error);
+        console.error('Use credits error:', error);
         return false;
       }
 
@@ -512,7 +346,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // Find the referrer by code
+      // Find referrer
       const { data: referrer, error: findError } = await supabase
         .from('profiles')
         .select('*')
@@ -524,15 +358,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (referrer.id === profile.id) {
-        return { success: false, error: 'You cannot use your own referral code' };
+        return { success: false, error: 'Cannot use your own referral code' };
       }
 
-      // Update current user with referred_by and add bonus credits
+      // Update current user
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           referred_by: referrer.id,
-          credits: profile.credits + REFERRAL_BONUS_CREDITS 
+          credits: profile.credits + REFERRAL_BONUS_CREDITS,
         })
         .eq('id', profile.id);
 
@@ -540,20 +374,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: 'Failed to apply referral code' };
       }
 
-      // Add bonus credits to referrer and increment their referral count
+      // Update referrer
       await supabase
         .from('profiles')
-        .update({ 
+        .update({
           credits: referrer.credits + REFERRAL_BONUS_CREDITS,
-          total_referrals: referrer.total_referrals + 1
+          total_referrals: referrer.total_referrals + 1,
         })
         .eq('id', referrer.id);
 
-      // Update local profile
-      setProfile({ 
-        ...profile, 
+      // Update local state
+      setProfile({
+        ...profile,
         referred_by: referrer.id,
-        credits: profile.credits + REFERRAL_BONUS_CREDITS 
+        credits: profile.credits + REFERRAL_BONUS_CREDITS,
       });
 
       return { success: true };
@@ -562,11 +396,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Refresh profile from database
+  // Refresh profile
   const refreshProfile = async () => {
     if (user) {
-      const profile = await fetchProfile(user.id, user.email);
-      setProfile(profile);
+      const profileData = await fetchProfile(user.id, user.email);
+      setProfile(profileData);
     }
   };
 
@@ -577,13 +411,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       session,
       loading,
       isConfigured,
-      sendOTP,
-      verifyOTP,
-      setPasswordAfterOTP,
-      signInWithPassword,
-      resetPassword,
-      updatePassword,
+      signUp,
+      signIn,
       signOut,
+      resetPassword,
       addCredits,
       useCredits,
       applyReferralCode,

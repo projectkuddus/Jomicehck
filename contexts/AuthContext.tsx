@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
-      console.log('Auth event:', event);
+      console.log('Auth event:', event, 'User:', newSession?.user?.email);
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -122,13 +122,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
+      // Handle OAuth callback
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (newSession?.user) {
+          setSession(newSession);
+          setUser(newSession.user);
+          
+          // Fetch or create profile
+          const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
+          if (mounted) setProfile(profileData);
+        }
+      }
+
       if (newSession?.user) {
         setSession(newSession);
         setUser(newSession.user);
         
-        // Fetch profile
-        const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
-        if (mounted) setProfile(profileData);
+        // Fetch profile if not already set
+        if (!profile) {
+          const profileData = await fetchProfile(newSession.user.id, newSession.user.email);
+          if (mounted) setProfile(profileData);
+        }
       }
       
       setLoading(false);

@@ -41,21 +41,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Get the full redirect URL including hash
+      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
       if (error) {
         console.error('Google login error:', error);
-        setError(error.message);
+        setError(error.message || 'Failed to connect to Google. Please check your browser settings.');
+        setGoogleLoading(false);
+      } else if (data?.url) {
+        // Redirect should happen automatically, but if it doesn't, redirect manually
+        window.location.href = data.url;
+      } else {
+        // No error but no URL - might be a configuration issue
+        setError('OAuth configuration error. Please contact support.');
         setGoogleLoading(false);
       }
-      // If successful, page will redirect to Google
     } catch (err: any) {
-      console.error('Google login error:', err);
+      console.error('Google login exception:', err);
       setError(err.message || 'Failed to sign in with Google');
       setGoogleLoading(false);
     }
@@ -67,20 +80,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Get the full redirect URL including hash
+      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
         },
       });
 
       if (error) {
         console.error('Apple login error:', error);
-        setError(error.message);
+        setError(error.message || 'Failed to connect to Apple. Please check your browser settings.');
+        setAppleLoading(false);
+      } else if (data?.url) {
+        // Redirect should happen automatically, but if it doesn't, redirect manually
+        window.location.href = data.url;
+      } else {
+        // No error but no URL - might be a configuration issue
+        setError('OAuth configuration error. Please contact support.');
         setAppleLoading(false);
       }
     } catch (err: any) {
-      console.error('Apple login error:', err);
+      console.error('Apple login exception:', err);
       setError(err.message || 'Failed to sign in with Apple');
       setAppleLoading(false);
     }

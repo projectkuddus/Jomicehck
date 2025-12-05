@@ -10,7 +10,7 @@ interface HeaderProps {
   currentPage: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth, currentPage }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth, onBuyCredits, currentPage }) => {
   const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
@@ -78,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
           )}
 
           {/* User Menu */}
-          <UserMenu onOpenAuth={onOpenAuth} />
+          <UserMenu onOpenAuth={onOpenAuth} onBuyCredits={onBuyCredits} />
           
           {/* Mobile Menu Button */}
           <button 

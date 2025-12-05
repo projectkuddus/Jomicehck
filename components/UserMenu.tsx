@@ -4,9 +4,10 @@ import { useAuth, REFERRAL_BONUS_CREDITS } from '../contexts/AuthContext';
 
 interface UserMenuProps {
   onOpenAuth: () => void;
+  onBuyCredits?: () => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits }) => {
   const { user, profile, signOut, isConfigured, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -172,7 +173,21 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
           )}
 
           {/* Actions */}
-          <div className="p-2">
+          <div className="p-2 space-y-2">
+            {onBuyCredits && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onBuyCredits();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <CreditCard size={16} />
+                Buy More Credits
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.preventDefault();

@@ -101,6 +101,7 @@ const AppContent: React.FC = () => {
     }
   }, [user, profile, isAuthOpen]);
 
+
   // Force refresh auth state after OAuth callback
   useEffect(() => {
     const hash = window.location.hash;

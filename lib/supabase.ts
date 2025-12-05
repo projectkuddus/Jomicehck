@@ -9,7 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: supabaseUrl ? `sb-${supabaseUrl.split('//')[1]?.split('.')[0]}-auth-token` : 'sb-auth-token',
+    },
+  }
 );
 
 export const isSupabaseConfigured = () => {

@@ -546,6 +546,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             </table>
           </div>
         </div>
+        )}
 
         {/* Instructions */}
         <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-xl">

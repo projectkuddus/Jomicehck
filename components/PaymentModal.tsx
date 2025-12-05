@@ -60,6 +60,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
     setError(null);
 
     try {
+      console.log('💳 Payment request:', {
+        userId: user.id,
+        packageId,
+        method,
+        transactionId: transactionId || 'none',
+      });
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -73,14 +80,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         }),
       });
 
+      console.log('💳 Payment response status:', response.status);
+
       // Check if response is ok before parsing
       if (!response.ok) {
         let errorMessage = 'Payment failed';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          console.error('❌ Payment error response:', errorData);
         } catch {
-          errorMessage = `Server error: ${response.status}`;
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+          console.error('❌ Payment error - could not parse response');
         }
         throw new Error(errorMessage);
       }
@@ -88,7 +99,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       let data;
       try {
         data = await response.json();
+        console.log('✅ Payment response:', data);
       } catch (parseError) {
+        console.error('❌ Payment parse error:', parseError);
         throw new Error('Invalid response from server. Please try again.');
       }
 
@@ -123,7 +136,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         onClose();
       }
     } catch (err: any) {
-      console.error('Payment error:', err);
+      console.error('❌ Payment error:', err);
       setError(err.message || 'Payment failed. Please try again or contact support.');
       setIsProcessing(false);
     }

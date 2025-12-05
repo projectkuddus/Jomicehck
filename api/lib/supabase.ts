@@ -7,12 +7,19 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl) {
-  console.warn('Supabase URL not configured in API routes');
+  console.warn('⚠️ Supabase URL not configured in API routes');
 }
 
 // Use service role key for server-side operations (bypasses RLS)
 // Fallback to anon key if service key not available (will respect RLS)
 const supabaseKey = supabaseServiceKey || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+// Debug logging (only in development or when debugging)
+if (!supabaseServiceKey) {
+  console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not found! Using anon key (will respect RLS)');
+} else {
+  console.log('✅ Using service role key for API operations');
+}
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',

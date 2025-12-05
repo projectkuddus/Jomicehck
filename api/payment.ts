@@ -35,17 +35,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Check Supabase configuration
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    console.log('🔍 Payment API - Environment Check:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
+      serviceKeyLength: supabaseServiceKey ? supabaseServiceKey.length : 0,
+    });
+
     if (!supabaseUrl) {
-      console.error('Supabase URL not configured');
+      console.error('❌ Supabase URL not configured');
       return res.status(500).json({ 
         success: false,
-        error: 'Server configuration error. Please contact support.' 
+        error: 'Server configuration error: Supabase URL missing. Please contact support.' 
+      });
+    }
+
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not configured');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Server configuration error: Service role key missing. Please check Vercel environment variables.' 
       });
     }
 
     const { userId, packageId, paymentMethod, transactionId } = req.body as PaymentRequest;
     
-    console.log('Payment request received:', { userId, packageId, paymentMethod, hasTransactionId: !!transactionId });
+    console.log('💳 Payment request received:', { 
+      userId, 
+      packageId, 
+      paymentMethod, 
+      hasTransactionId: !!transactionId,
+      transactionIdLength: transactionId?.length || 0,
+    });
 
     // Validate input
     if (!userId || !packageId || !paymentMethod) {
@@ -94,11 +117,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (error) {
-        console.error('Payment record error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error('❌ Payment record error:', error);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        console.error('❌ Error hint:', error.hint);
+        
+        // Provide more specific error messages
+        let errorMessage = error.message || 'Failed to create payment record';
+        
+        if (error.code === 'PGRST116') {
+          errorMessage = 'Payment table not found. Please create payment_transactions table in Supabase.';
+        } else if (error.code === '42501') {
+          errorMessage = 'Permission denied. Service role key may not have insert permissions. Check RLS policies.';
+        } else if (error.code === '23503') {
+          errorMessage = 'Invalid user ID. User does not exist in profiles table.';
+        } else if (error.message?.includes('RLS')) {
+          errorMessage = 'Row Level Security blocking insert. Service role key should bypass RLS. Check RLS policies.';
+        }
+        
         return res.status(500).json({ 
           success: false,
-          error: error.message || 'Failed to create payment record. Please check if payment_transactions table exists in Supabase.' 
+          error: errorMessage,
+          errorCode: error.code,
+          hint: error.hint,
         });
       }
 

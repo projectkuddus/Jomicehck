@@ -12,17 +12,17 @@ interface PaymentModalProps {
 }
 
 const creditPackages = [
-  { credits: 20, price: 199, perPage: 10 },
-  { credits: 50, price: 399, perPage: 8, popular: true },
-  { credits: 100, price: 699, perPage: 7 },
-  { credits: 250, price: 1499, perPage: 6 },
+  { credits: 20, price: 199, perPage: 1 }, // 1 credit = 1 page
+  { credits: 50, price: 399, perPage: 1, popular: true }, // 1 credit = 1 page
+  { credits: 100, price: 699, perPage: 1 }, // 1 credit = 1 page
+  { credits: 250, price: 1499, perPage: 1 }, // 1 credit = 1 page
 ];
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // This is a React rule - hooks must be called in the same order every render
   const { user, refreshProfile } = useAuth();
-  const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
+  const [method, setMethod] = useState<'bkash'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState('');
@@ -224,29 +224,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
             </p>
           </div>
 
-          {/* Payment Methods */}
+          {/* Payment Method - bKash Only */}
           <div className="text-sm font-semibold text-slate-700 mb-2 sm:mb-3">Payment Method</div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <div 
-              onClick={() => setMethod('bkash')}
-              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-[10px] sm:text-xs">bKash</div>
+          <div className="mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-pink-500 bg-pink-50">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm">bKash</div>
               <div className="flex-1">
-                <p className="font-bold text-slate-800 text-xs sm:text-sm">bKash</p>
+                <p className="font-bold text-slate-800 text-sm sm:text-base">bKash</p>
+                <p className="text-xs text-slate-600">Send money to: 01613078101</p>
               </div>
-              {method === 'bkash' && <CheckCircle size={14} className="sm:w-4 sm:h-4 text-pink-600" />}
-            </div>
-
-            <div 
-              onClick={() => setMethod('nagad')}
-              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-[10px] sm:text-xs">Nagad</div>
-              <div className="flex-1">
-                <p className="font-bold text-slate-800 text-xs sm:text-sm">Nagad</p>
-              </div>
-              {method === 'nagad' && <CheckCircle size={14} className="sm:w-4 sm:h-4 text-orange-600" />}
+              <CheckCircle size={18} className="sm:w-5 sm:h-5 text-pink-600" />
             </div>
           </div>
 
@@ -260,14 +247,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   </p>
                   <div className="bg-blue-50 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3">
                     <p className="text-lg sm:text-2xl font-bold text-blue-900 text-center break-all">
-                      {method === 'bkash' ? 'bKash: 01613078101' : 'Nagad: 01613078101'}
+                      bKash: 01613078101
                     </p>
                   </div>
                   <p className="text-[10px] sm:text-xs text-blue-600 mb-1 sm:mb-2">
-                    💡 Open your {method === 'bkash' ? 'bKash' : 'Nagad'} app and send the money
+                    💡 Open your bKash app and send the money
                   </p>
                   <p className="text-[10px] sm:text-xs text-blue-600">
-                    📋 Copy the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app after sending
+                    📋 Copy the transaction ID from your bKash app after sending
                   </p>
                 </div>
               </div>
@@ -279,7 +266,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   type="text"
                   value={transactionId}
                   onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
-                  placeholder={`Enter ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
+                  placeholder="Enter bKash transaction ID"
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono text-center text-base sm:text-lg"
                 />
                 <p className="text-[10px] sm:text-xs text-slate-500 mt-2 text-center">

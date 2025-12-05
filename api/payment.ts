@@ -7,7 +7,7 @@ import { supabase } from './lib/supabase';
 interface PaymentRequest {
   userId: string;
   packageId: string; // 'starter' | 'popular' | 'pro' | 'agent'
-  paymentMethod: 'bkash' | 'nagad';
+  paymentMethod: 'bkash';
   transactionId: string; // Required for manual verification
 }
 
@@ -29,11 +29,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
+    // Check Supabase configuration
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error('Supabase URL not configured');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Server configuration error. Please contact support.' 
+      });
+    }
+
     const { userId, packageId, paymentMethod, transactionId } = req.body as PaymentRequest;
+    
+    console.log('Payment request received:', { userId, packageId, paymentMethod, hasTransactionId: !!transactionId });
 
     // Validate input
     if (!userId || !packageId || !paymentMethod) {
@@ -45,13 +57,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ success: false, error: 'Invalid package' });
     }
 
-    // Only manual verification (bKash/Nagad) is supported
-    if (paymentMethod === 'bkash' || paymentMethod === 'nagad') {
-      if (!transactionId) {
-        return res.status(400).json({ success: false, error: 'Transaction ID required for manual payment' });
-      }
+    // Only bKash manual verification is supported
+    if (paymentMethod !== 'bkash') {
+      return res.status(400).json({ success: false, error: 'Only bKash payment is supported' });
+    }
 
-      // Create pending payment record
+    if (!transactionId || !transactionId.trim()) {
+      return res.status(400).json({ success: false, error: 'Transaction ID is required' });
+    }
+
+    // Create pending payment record
+    try {
       const { data, error } = await supabase
         .from('payment_transactions')
         .insert({
@@ -59,18 +75,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           package_id: packageId,
           amount: packageData.price,
           credits: packageData.credits,
-          payment_method: paymentMethod,
+          payment_method: 'bkash',
           status: 'pending',
-          transaction_id: transactionId,
+          transaction_id: transactionId.trim(),
         })
         .select()
         .single();
 
       if (error) {
         console.error('Payment record error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         return res.status(500).json({ 
           success: false,
           error: error.message || 'Failed to create payment record. Please check if payment_transactions table exists in Supabase.' 
+        });
+      }
+
+      if (!data) {
+        return res.status(500).json({ 
+          success: false,
+          error: 'Payment record created but no data returned' 
         });
       }
 
@@ -82,9 +106,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         amount: packageData.price,
         credits: packageData.credits,
       });
+    } catch (dbError: any) {
+      console.error('Database error:', dbError);
+      return res.status(500).json({ 
+        success: false,
+        error: dbError.message || 'Database error occurred' 
+      });
     }
-
-    return res.status(400).json({ success: false, error: 'Invalid payment method' });
   } catch (error: any) {
     console.error('Payment API error:', error);
     return res.status(500).json({ 

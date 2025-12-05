@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from './lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Payment gateway integration
 // Supports SSLCommerz (primary) and manual verification (fallback)
@@ -59,6 +59,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'Server configuration error: Service role key missing. Please check Vercel environment variables.' 
       });
     }
+
+    // Initialize Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
     const { userId, packageId, paymentMethod, transactionId } = req.body as PaymentRequest;
     

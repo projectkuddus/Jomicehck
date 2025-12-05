@@ -20,23 +20,28 @@ const creditPackages = [
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
   const { user, refreshProfile } = useAuth();
-  const [method, setMethod] = useState<'bkash' | 'nagad' | 'sslcommerz'>('bkash');
+  const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [showTransactionInput, setShowTransactionInput] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState(() => {
-    // Auto-select the best package for user's needs
-    const recommended = creditPackages.find(p => p.credits >= creditsNeeded) || creditPackages[1];
-    return recommended.credits;
-  });
+  const [selectedPackage, setSelectedPackage] = useState(50); // Default to popular
+
+  // Set recommended package on mount
+  React.useEffect(() => {
+    if (creditsNeeded > 0) {
+      const recommended = creditPackages.find(p => p.credits >= creditsNeeded);
+      if (recommended) {
+        setSelectedPackage(recommended.credits);
+      }
+    }
+  }, [creditsNeeded]);
 
   if (!isOpen) return null;
 
-  const currentPackage = creditPackages.find(p => p.credits === selectedPackage)!;
-  const packageId = creditPackages.findIndex(p => p.credits === selectedPackage) === 0 ? 'starter' :
-                    creditPackages.findIndex(p => p.credits === selectedPackage) === 1 ? 'popular' :
-                    creditPackages.findIndex(p => p.credits === selectedPackage) === 2 ? 'pro' : 'agent';
+  const currentPackage = creditPackages.find(p => p.credits === selectedPackage) || creditPackages[1];
+  const packageIndex = creditPackages.findIndex(p => p.credits === selectedPackage);
+  const packageId = ['starter', 'popular', 'pro', 'agent'][packageIndex] || 'popular';
 
   const handlePay = async () => {
     if (!user) {

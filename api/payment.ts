@@ -117,7 +117,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (error) {
         console.error('Payment record error:', error);
-        return res.status(500).json({ error: 'Failed to create payment record' });
+        return res.status(500).json({ 
+          success: false,
+          error: error.message || 'Failed to create payment record. Please check if payment_transactions table exists in Supabase.' 
+        });
       }
 
       return res.status(200).json({

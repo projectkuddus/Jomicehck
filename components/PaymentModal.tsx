@@ -68,9 +68,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         }),
       });
 
+      // Check if response is ok before parsing
+      if (!response.ok) {
+        let errorMessage = 'Payment failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!data.success) {
         throw new Error(data.error || 'Payment failed');
       }
 
@@ -78,7 +90,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         // Manual verification needed
         setError(null);
         alert(`Payment submitted! Your ${data.credits} credits will be added after verification. Payment ID: ${data.paymentId}`);
-        await refreshProfile();
+        // Refresh profile to get updated credits (if any were added)
+        try {
+          await refreshProfile();
+        } catch (err) {
+          console.error('Profile refresh error:', err);
+          // Don't block - payment was submitted successfully
+        }
         onConfirm();
         onClose();
       } else if (data.paymentUrl) {
@@ -86,14 +104,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         window.location.href = data.paymentUrl;
       } else {
         // Success
-        await refreshProfile();
+        try {
+          await refreshProfile();
+        } catch (err) {
+          console.error('Profile refresh error:', err);
+        }
         onConfirm();
         onClose();
       }
     } catch (err: any) {
       console.error('Payment error:', err);
-      setError(err.message || 'Payment failed. Please try again.');
-    } finally {
+      setError(err.message || 'Payment failed. Please try again or contact support.');
       setIsProcessing(false);
     }
   };

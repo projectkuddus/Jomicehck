@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Phone, KeyRound, Loader2, Gift, CheckCircle2, Copy, Share2 } from 'lucide-react';
+import { X, Mail, KeyRound, Loader2, Gift, CheckCircle2, Copy, Share2 } from 'lucide-react';
 import { useAuth, REFERRAL_BONUS_CREDITS, FREE_SIGNUP_CREDITS } from '../contexts/AuthContext';
 
 interface AuthModalProps {
@@ -7,13 +7,13 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type AuthStep = 'phone' | 'otp' | 'referral' | 'success';
+type AuthStep = 'email' | 'otp' | 'referral' | 'success';
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { sendOTP, verifyOTP, profile, applyReferralCode, isConfigured } = useAuth();
   
-  const [step, setStep] = useState<AuthStep>('phone');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<AuthStep>('email');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,16 +22,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSendOTP = async () => {
-    if (!phone || phone.length < 10) {
-      setError('Please enter a valid phone number');
+    if (!email || !validateEmail(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
     setLoading(true);
     setError('');
 
-    const result = await sendOTP(phone);
+    const result = await sendOTP(email);
     
     setLoading(false);
     
@@ -43,22 +47,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleVerifyOTP = async () => {
-    if (!otp || otp.length < 4) {
-      setError('Please enter the OTP');
+    if (!otp || otp.length < 6) {
+      setError('Please enter the 6-digit code');
       return;
     }
 
     setLoading(true);
     setError('');
 
-    const result = await verifyOTP(phone, otp);
+    const result = await verifyOTP(email, otp);
     
     setLoading(false);
     
     if (result.success) {
       setStep('referral');
     } else {
-      setError(result.error || 'Invalid OTP');
+      setError(result.error || 'Invalid code');
     }
   };
 
@@ -113,8 +117,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleClose = () => {
-    setStep('phone');
-    setPhone('');
+    setStep('email');
+    setEmail('');
     setOtp('');
     setReferralCode('');
     setError('');
@@ -150,21 +154,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </button>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              {step === 'phone' && <Phone size={24} />}
+              {step === 'email' && <Mail size={24} />}
               {step === 'otp' && <KeyRound size={24} />}
               {step === 'referral' && <Gift size={24} />}
               {step === 'success' && <CheckCircle2 size={24} />}
             </div>
             <div>
               <h3 className="text-lg font-bold">
-                {step === 'phone' && 'Login / Sign Up'}
-                {step === 'otp' && 'Enter OTP'}
+                {step === 'email' && 'Login / Sign Up'}
+                {step === 'otp' && 'Check Your Email'}
                 {step === 'referral' && 'Referral Code'}
                 {step === 'success' && 'Welcome!'}
               </h3>
               <p className="text-white/70 text-sm">
-                {step === 'phone' && 'Enter your mobile number'}
-                {step === 'otp' && 'We sent a code to your phone'}
+                {step === 'email' && 'Enter your email address'}
+                {step === 'otp' && 'We sent a code to your email'}
                 {step === 'referral' && 'Have a friend\'s code?'}
                 {step === 'success' && 'You\'re all set'}
               </p>
@@ -175,26 +179,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Body */}
         <div className="p-6">
           
-          {/* Step 1: Phone Number */}
-          {step === 'phone' && (
+          {/* Step 1: Email */}
+          {step === 'email' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mobile Number (Bangladesh)
+                  Email Address
                 </label>
-                <div className="flex">
-                  <div className="flex items-center px-4 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-slate-500 font-medium">
-                    +88
-                  </div>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    placeholder="01XXXXXXXXX"
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-r-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg tracking-wider"
-                    maxLength={11}
-                  />
-                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendOTP()}
+                />
               </div>
 
               {error && (
@@ -205,18 +204,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
               <button
                 onClick={handleSendOTP}
-                disabled={loading || phone.length < 10}
+                disabled={loading || !validateEmail(email)}
                 className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <><Loader2 size={20} className="animate-spin" /> Sending...</>
                 ) : (
-                  <>Send OTP <Phone size={18} /></>
+                  <>Send Code <Mail size={18} /></>
                 )}
               </button>
 
               <p className="text-xs text-slate-500 text-center">
-                We'll send a one-time password to verify your number. No password needed!
+                We'll send a 6-digit code to verify your email. No password needed!
               </p>
             </div>
           )}
@@ -226,7 +225,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Enter 6-digit OTP
+                  Enter 6-digit Code
                 </label>
                 <input
                   type="text"
@@ -235,11 +234,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   placeholder="000000"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-center text-2xl tracking-[0.5em] font-mono"
                   maxLength={6}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyOTP()}
                 />
               </div>
 
               <p className="text-sm text-slate-500 text-center">
-                Sent to +88{phone}
+                Check your inbox: <span className="font-medium text-slate-700">{email}</span>
+              </p>
+              <p className="text-xs text-slate-400 text-center">
+                (Also check spam/junk folder)
               </p>
 
               {error && (
@@ -261,10 +264,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </button>
 
               <button
-                onClick={() => { setStep('phone'); setError(''); }}
+                onClick={() => { setStep('email'); setError(''); setOtp(''); }}
                 className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm"
               >
-                ← Change number
+                ← Change email
               </button>
             </div>
           )}
@@ -276,7 +279,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <CheckCircle2 size={32} className="text-green-600" />
                 </div>
-                <p className="text-green-600 font-medium">Phone verified!</p>
+                <p className="text-green-600 font-medium">Email verified!</p>
                 <p className="text-slate-500 text-sm">You received {FREE_SIGNUP_CREDITS} free credits</p>
               </div>
 
@@ -382,4 +385,3 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 };
 
 export default AuthModal;
-

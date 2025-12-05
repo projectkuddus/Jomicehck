@@ -5,7 +5,7 @@ import { User, Session } from '@supabase/supabase-js';
 // Types
 export interface UserProfile {
   id: string;
-  phone: string;
+  email: string;
   credits: number;
   referral_code: string;
   referred_by: string | null;
@@ -21,8 +21,8 @@ interface AuthContextType {
   isConfigured: boolean;
   
   // Auth methods
-  sendOTP: (phone: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOTP: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   
   // Credit methods
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Fetch user profile from database
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Profile doesn't exist, create one
         const newProfile = {
           id: userId,
-          phone: user?.phone || '',
+          email: userEmail || user?.email || '',
           credits: FREE_SIGNUP_CREDITS,
           referral_code: generateReferralCode(),
           referred_by: null,
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        fetchProfile(session.user.id, session.user.email).then(setProfile);
       }
       setLoading(false);
     });
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
+        const profile = await fetchProfile(session.user.id, session.user.email);
         setProfile(profile);
       } else {
         setProfile(null);
@@ -145,18 +145,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => subscription.unsubscribe();
   }, [isConfigured]);
 
-  // Send OTP to phone number
-  const sendOTP = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+  // Send OTP to email
+  const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
     }
 
     try {
-      // Format phone number (ensure it has country code)
-      const formattedPhone = phone.startsWith('+') ? phone : `+88${phone}`; // Default to Bangladesh
-
       const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
+        email: email.toLowerCase().trim(),
+        options: {
+          shouldCreateUser: true,
+        },
       });
 
       if (error) {
@@ -170,18 +170,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Verify OTP
-  const verifyOTP = async (phone: string, token: string): Promise<{ success: boolean; error?: string }> => {
+  const verifyOTP = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
     }
 
     try {
-      const formattedPhone = phone.startsWith('+') ? phone : `+88${phone}`;
-
       const { data, error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
+        email: email.toLowerCase().trim(),
         token,
-        type: 'sms',
+        type: 'email',
       });
 
       if (error) {
@@ -312,7 +310,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Refresh profile from database
   const refreshProfile = async () => {
     if (user) {
-      const profile = await fetchProfile(user.id);
+      const profile = await fetchProfile(user.id, user.email);
       setProfile(profile);
     }
   };
@@ -344,4 +342,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

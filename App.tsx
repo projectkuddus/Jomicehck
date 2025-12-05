@@ -39,7 +39,7 @@ type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'pri
 type ResultTab = 'report' | 'chat';
 
 const AppContent: React.FC = () => {
-  const { user, profile, useCredits, isConfigured, refreshProfile } = useAuth();
+  const { user, profile, useCredits, isConfigured, refreshProfile, addCredits } = useAuth();
   
   const [currentPage, setCurrentPage] = useState<PageView>('home');
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -378,11 +378,32 @@ const AppContent: React.FC = () => {
         stack: err.stack,
         name: err.name,
       });
+      
+      // CRITICAL FIX: Refund credits if analysis fails
+      const creditsUsed = priceCalculation.creditsNeeded;
+      if (creditsUsed > 0 && user && profile && addCredits) {
+        console.log('💰 Refunding credits due to analysis failure:', creditsUsed);
+        try {
+          const refundSuccess = await addCredits(creditsUsed);
+          if (refundSuccess) {
+            console.log('✅ Credits refunded successfully');
+            // Refresh profile to show updated credits
+            if (refreshProfile) {
+              await refreshProfile();
+            }
+          } else {
+            console.error('❌ Failed to refund credits');
+          }
+        } catch (refundErr: any) {
+          console.error('❌ Credit refund error:', refundErr);
+        }
+      }
+      
       setAnalysis({
         isLoading: false,
         isStreaming: false,
         result: null,
-        error: err.message || "An unexpected error occurred during analysis. Please try again or contact support.",
+        error: `Analysis failed: ${err.message || "An unexpected error occurred"}. ${creditsUsed > 0 ? 'Credits have been refunded.' : ''} Please try again or contact support if the issue persists.`,
         progress: undefined
       });
     }

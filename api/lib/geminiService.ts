@@ -108,7 +108,17 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
       text: detectionPrompt
     });
 
+    // Validate API key before proceeding
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('❌ GEMINI_API_KEY not found in environment');
+      throw new Error('AI service not configured. Please contact support.');
+    }
+
     const genAI = getAI();
+    
+    console.log('🤖 Calling Gemini API with', parts.length, 'parts');
+    
     const response = await genAI.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: {
@@ -162,23 +172,69 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
       }
     });
 
-    const text = response.text || "{}";
-    const jsonResult = JSON.parse(text) as AnalysisResult;
+    console.log('✅ Gemini API response received');
+    console.log('📋 Response type:', typeof response);
+    console.log('📋 Response keys:', Object.keys(response || {}));
+    
+    // Handle different response structures
+    let text: string;
+    try {
+      if (typeof response === 'string') {
+        text = response;
+      } else if (response && typeof response === 'object') {
+        // Try different possible response structures
+        text = (response as any).text || 
+               (response as any).response?.text || 
+               (response as any).candidates?.[0]?.content?.parts?.[0]?.text ||
+               JSON.stringify(response);
+      } else {
+        throw new Error('Unexpected response type from AI service');
+      }
+      
+      if (!text || text.trim() === '' || text.trim() === '{}') {
+        throw new Error('Empty response from AI service');
+      }
+      
+      console.log('📄 Response text length:', text.length);
+      console.log('📄 Response preview:', text.substring(0, 200));
+      
+    } catch (parseError: any) {
+      console.error('❌ Response parsing error:', parseError);
+      console.error('❌ Full response:', JSON.stringify(response, null, 2).substring(0, 1000));
+      throw new Error('Failed to parse AI service response. Please try again.');
+    }
+    
+    // Parse JSON
+    let jsonResult: AnalysisResult;
+    try {
+      jsonResult = JSON.parse(text) as AnalysisResult;
+    } catch (jsonError: any) {
+      console.error('❌ JSON parse error:', jsonError);
+      console.error('❌ Response text (first 500 chars):', text.substring(0, 500));
+      throw new Error('Invalid JSON response from AI service. Please try again.');
+    }
+    
     return jsonResult;
 
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    // Provide more specific error messages - include actual error for debugging
-    if (error.message?.includes('API key') || error.message?.includes('API_KEY')) {
-      throw new Error(`API key error: ${error.message}`);
+    console.error("❌ Gemini Analysis Error:", error);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error name:", error.name);
+    
+    // Provide more specific error messages
+    if (error.message?.includes('API key') || error.message?.includes('API_KEY') || error.message?.includes('not configured')) {
+      throw new Error('AI service configuration error. Please contact support.');
     }
-    if (error.message?.includes('quota') || error.message?.includes('rate')) {
+    if (error.message?.includes('quota') || error.message?.includes('rate') || error.message?.includes('429')) {
       throw new Error("Service temporarily busy. Please try again in a moment.");
     }
-    if (error.message?.includes('timeout')) {
+    if (error.message?.includes('timeout') || error.message?.includes('504')) {
       throw new Error("Analysis took too long. Please try with fewer pages.");
     }
-    throw new Error(error.message || "Failed to analyze documents. Please try again.");
+    if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+      throw new Error("Invalid document format. Please check your files and try again.");
+    }
+    throw new Error(error.message || "Failed to analyze documents. Please try again or contact support.");
   }
 };
 

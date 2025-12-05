@@ -15,34 +15,57 @@ const BATCH_SIZE = 50; // Process files in batches to manage memory
 const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = (file: File): Promise<FileWithPreview> => {
-    return new Promise((resolve) => {
+  const processFile = async (file: File): Promise<FileWithPreview> => {
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic';
+    
+    // Read file as base64
+    const base64Data = await new Promise<string>((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const isImage = file.type.startsWith('image/');
-        const isPdf = file.type === 'application/pdf';
-        const isHeic = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic';
-        
-        // Estimate pages: PDF = 5, Others = 1
-        const estimatedPages = isPdf ? 5 : 1;
-
-        // Determine preview URL
-        let previewUrl: string | null = null;
-        if (isImage && !isHeic) {
-          previewUrl = URL.createObjectURL(file);
-        }
-
-        resolve({
-          id: Math.random().toString(36).substr(2, 9),
-          file: file,
-          preview: previewUrl,
-          base64Data: reader.result as string,
-          mimeType: file.type || (isHeic ? 'image/heic' : 'application/octet-stream'),
-          estimatedPages
-        });
-      };
+      reader.onloadend = () => resolve(reader.result as string);
       reader.readAsDataURL(file);
     });
+
+    // Determine preview URL
+    let previewUrl: string | null = null;
+    if (isImage && !isHeic) {
+      previewUrl = URL.createObjectURL(file);
+    }
+
+    // CRITICAL FIX: Count actual PDF pages instead of hardcoded 5
+    let estimatedPages = 1; // Default for images
+    
+    if (isPdf) {
+      try {
+        // Use PDF.js to count actual pages
+        const pdfjsLib = await import('pdfjs-dist');
+        // Set worker source for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        
+        // Load PDF from base64
+        const base64WithoutPrefix = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+        const pdf = await pdfjsLib.getDocument({ data: atob(base64WithoutPrefix) }).promise;
+        estimatedPages = pdf.numPages;
+        console.log(`📄 PDF "${file.name}" has ${estimatedPages} pages`);
+      } catch (pdfError: any) {
+        console.warn('⚠️ Failed to count PDF pages, using estimate:', pdfError.message);
+        // Fallback: Estimate based on file size (rough: 50KB per page average)
+        // But warn user it's an estimate
+        const fileSizeKB = file.size / 1024;
+        estimatedPages = Math.max(1, Math.ceil(fileSizeKB / 50)); // ~50KB per page estimate
+        console.warn(`⚠️ Using size-based estimate: ${estimatedPages} pages for ${fileSizeKB.toFixed(0)}KB file`);
+      }
+    }
+
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      file: file,
+      preview: previewUrl,
+      base64Data: base64Data,
+      mimeType: file.type || (isHeic ? 'image/heic' : 'application/octet-stream'),
+      estimatedPages
+    };
   };
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,10 +90,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
     // Process batches sequentially to avoid memory issues
     const allNewFiles: FileWithPreview[] = [];
     for (const batch of batches) {
-      const batchFiles = await Promise.all(batch.map(processFile));
-      allNewFiles.push(...batchFiles);
-      // Update state incrementally to show progress
-      setFiles((prev) => [...prev, ...batchFiles]);
+      try {
+        const batchFiles = await Promise.all(batch.map(processFile));
+        allNewFiles.push(...batchFiles);
+        // Update state incrementally to show progress
+        setFiles((prev) => [...prev, ...batchFiles]);
+      } catch (error: any) {
+        console.error('❌ Error processing file batch:', error);
+        // Continue with other files even if one fails
+      }
     }
 
     // Clear the input value to allow selecting the same file again
@@ -129,7 +157,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
           {file.file.name}
         </span>
         <span className="text-[10px] text-slate-400 mt-1">
-          {isPdf ? '~5 Pages' : 'HEIC Image'}
+          {isPdf ? `~${file.estimatedPages} Page${file.estimatedPages !== 1 ? 's' : ''}` : 'HEIC Image'}
         </span>
       </div>
     );

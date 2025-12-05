@@ -247,9 +247,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
             </div>
           </div>
 
-          {/* Payment Instructions and Transaction ID Input */}
-          {(
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          {/* Payment Instructions and Transaction ID Input - Always shown */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <div className="mb-4">
                 <p className="text-sm font-semibold text-blue-900 mb-2">📱 Payment Instructions:</p>
                 <div className="bg-white p-4 rounded-lg border border-blue-200">

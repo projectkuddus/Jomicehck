@@ -214,6 +214,17 @@ const AppContent: React.FC = () => {
   };
 
   const runAnalysis = async () => {
+    if (files.length === 0) {
+      setAnalysis({
+        isLoading: false,
+        isStreaming: false,
+        result: null,
+        error: 'Please upload at least one document to analyze.',
+        progress: undefined
+      });
+      return;
+    }
+
     setAnalysis({ 
       isLoading: true, 
       isStreaming: false, 
@@ -246,11 +257,12 @@ const AppContent: React.FC = () => {
       });
       saveToHistory(resultData); // Auto-save on success
     } catch (err: any) {
+      console.error('Analysis error:', err);
       setAnalysis({
         isLoading: false,
         isStreaming: false,
         result: null,
-        error: err.message || "An unexpected error occurred during analysis.",
+        error: err.message || "An unexpected error occurred during analysis. Please try again or contact support.",
         progress: undefined
       });
     }

@@ -19,6 +19,8 @@ const creditPackages = [
 ];
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This is a React rule - hooks must be called in the same order every render
   const { user, refreshProfile } = useAuth();
   const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,6 +38,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
     }
   }, [creditsNeeded]);
 
+  // Reset form when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setTransactionId('');
+      setError(null);
+    }
+  }, [isOpen]);
+
+  // NOW we can check if modal should be shown
   if (!isOpen) return null;
 
   const currentPackage = creditPackages.find(p => p.credits === selectedPackage) || creditPackages[1];
@@ -129,14 +140,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       setIsProcessing(false);
     }
   };
-
-  // Reset form when modal closes
-  React.useEffect(() => {
-    if (!isOpen) {
-      setTransactionId('');
-      setError(null);
-    }
-  }, [isOpen]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

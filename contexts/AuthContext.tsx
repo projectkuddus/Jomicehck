@@ -163,43 +163,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (mounted) setLoading(false);
     });
 
-    // Get initial session
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        if (!mounted) return;
-        
-        if (error) {
-          console.error('Session error:', error.message);
-          setLoading(false);
-          return;
-        }
-        
-        // If no session, just stop loading
-        if (!session) {
-          setLoading(false);
-          return;
-        }
-        
-        // Session exists - update state
-        setSession(session);
-        setUser(session.user);
-        
-        // Try to get profile
-        fetchProfile(session.user.id, session.user.email)
-          .then(profileData => {
-            if (mounted) setProfile(profileData);
-          })
-          .catch(err => {
-            console.error('Initial profile fetch failed:', err);
-          })
-          .finally(() => {
-            if (mounted) setLoading(false);
-          });
-      })
-      .catch(err => {
-        console.error('getSession failed:', err);
-        if (mounted) setLoading(false);
-      });
+    // Get initial session - but check if localStorage was cleared first (logout)
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0];
+    const authTokenKey = projectRef ? `sb-${projectRef}-auth-token` : null;
+    
+    // If auth token was explicitly cleared (logout), don't restore session
+    const wasLoggedOut = authTokenKey && !localStorage.getItem(authTokenKey);
+    
+    if (!wasLoggedOut) {
+      supabase.auth.getSession()
+        .then(({ data: { session }, error }) => {
+          if (!mounted) return;
+          
+          if (error) {
+            console.error('Session error:', error.message);
+            setLoading(false);
+            return;
+          }
+          
+          // If no session, just stop loading
+          if (!session) {
+            setLoading(false);
+            return;
+          }
+          
+          // Session exists - update state
+          setSession(session);
+          setUser(session.user);
+          
+          // Try to get profile
+          fetchProfile(session.user.id, session.user.email)
+            .then(profileData => {
+              if (mounted) setProfile(profileData);
+            })
+            .catch(err => {
+              console.error('Initial profile fetch failed:', err);
+            })
+            .finally(() => {
+              if (mounted) setLoading(false);
+            });
+        })
+        .catch(err => {
+          console.error('getSession failed:', err);
+          if (mounted) setLoading(false);
+        });
+    } else {
+      // Was logged out - don't restore session
+      if (mounted) setLoading(false);
+    }
 
     // Cleanup
     return () => {

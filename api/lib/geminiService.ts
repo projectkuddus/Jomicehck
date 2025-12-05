@@ -22,20 +22,29 @@ You are an expert Senior Property Lawyer in Bangladesh (Supreme Court Advocate).
 Your client is the **BUYER**. Your job is to protect them.
 You are paranoid, cynical, and extremely detail-oriented. You assume the seller might be hiding something (e.g., hidden mortgage, fake POA, Warish gaps).
 
+**CRITICAL FIRST CHECK - Multiple Deeds Detection:**
+Before analyzing, you MUST check if all documents belong to the SAME deed or DIFFERENT deeds.
+- Compare deed numbers (দলিল নম্বর), dates (তারিখ), property locations (মৌজা, দাগ নম্বর), seller/buyer names
+- If documents are from DIFFERENT deeds: This is EXTREMELY HIGH RISK. Flag it immediately in criticalIssues, increase riskScore by 30-40 points, set riskLevel to "Critical"
+- Analyzing different deeds together gives INCORRECT and DANGEROUS results
+
 **Task:** Analyze the provided property document images/PDFs (Dolil, Khatian, Namjari, etc.).
 
 **Analysis Depth (Pro Grade):**
-1.  **Chain of Title (মালিকানা বায়া দলিল):** Trace the history. Are CS -> SA -> RS -> BS recorded correctly? Is there a gap?
-2.  **Vested Property (অর্পিত সম্পত্তি) Check:** Look for Hindu names in previous records that disappeared without clear transfer. This is a huge risk.
-3.  **Power of Attorney (POA):** If this is a POA deal, check if the POA is registered, specific, and not expired.
-4.  **Field Check:** Don't just read the doc. Tell the user exactly what to check at the AC Land office (Volume No, Page No).
-5.  **Buyer Protection:** explicitly check if the terms favor the seller unfairly (e.g., no date for handover, vague liability clauses).
-6.  **Missing Information:** Identify what is NOT there but should be (e.g., missing schedule boundaries, missing witness names, missing dates).
+1.  **Multiple Deeds Check (CRITICAL):** First verify all documents are from same deed. If not, flag as Critical risk.
+2.  **Chain of Title (মালিকানা বায়া দলিল):** Trace the history. Are CS -> SA -> RS -> BS recorded correctly? Is there a gap?
+3.  **Vested Property (অর্পিত সম্পত্তি) Check:** Look for Hindu names in previous records that disappeared without clear transfer. This is a huge risk.
+4.  **Power of Attorney (POA):** If this is a POA deal, check if the POA is registered, specific, and not expired.
+5.  **Field Check:** Don't just read the doc. Tell the user exactly what to check at the AC Land office (Volume No, Page No).
+6.  **Buyer Protection:** explicitly check if the terms favor the seller unfairly (e.g., no date for handover, vague liability clauses).
+7.  **Missing Information:** Identify what is NOT there but should be (e.g., missing schedule boundaries, missing witness names, missing dates).
 
 **Output:**
 You MUST return the result in **JSON format** strictly adhering to the schema provided.
 All text fields inside the JSON must be in **Bengali (Bangla)**.
 `;
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+read_file
 
 const CHAT_SYSTEM_INSTRUCTION = `
 You are a specialized Legal AI Assistant for Bangladesh Land Law.
@@ -72,9 +81,31 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
       });
     }
 
-    // Add the user prompt
+    // CRITICAL: Check if documents are from different deeds
+    // Add detection prompt first
+    const detectionPrompt = `CRITICAL FIRST STEP: Before analyzing, check if these documents are from the SAME deed or DIFFERENT deeds.
+
+Look for:
+- Different deed numbers (দলিল নম্বর)
+- Different dates (তারিখ)
+- Different property locations (মৌজা, দাগ নম্বর)
+- Different seller/buyer names (বিক্রেতা/ক্রেতার নাম)
+- Different property amounts (সম্পত্তির মূল্য)
+
+If documents are from DIFFERENT deeds:
+1. This is EXTREMELY HIGH RISK - flag it immediately
+2. Add to criticalIssues: "⚠️ সতর্কতা: একাধিক ভিন্ন দলিল একসাথে আপলোড করা হয়েছে। এটি অত্যন্ত ঝুঁকিপূর্ণ। প্রতিটি দলিল আলাদাভাবে বিশ্লেষণ করা উচিত।"
+3. Increase riskScore significantly (add 30-40 points)
+4. Set riskLevel to "Critical"
+5. Warn that analyzing different deeds together gives incorrect results
+
+If documents are from SAME deed:
+- Proceed with normal analysis
+
+Now analyze these documents. Be critical. Find what is wrong. Ensure you populate 'goodPoints', 'badPoints', 'criticalIssues', 'missingInfo' and 'nextSteps' with detailed, distinct items. Extract a 'chainOfTitleTimeline' with specific dates/eras (CS, SA, RS) and events. Output valid JSON in Bangla.`;
+
     parts.push({
-      text: "Analyze these documents. Be critical. Find what is wrong. Ensure you populate 'goodPoints', 'badPoints', 'criticalIssues', 'missingInfo' and 'nextSteps' with detailed, distinct items. Extract a 'chainOfTitleTimeline' with specific dates/eras (CS, SA, RS) and events. Output valid JSON in Bangla."
+      text: detectionPrompt
     });
 
     const genAI = getAI();

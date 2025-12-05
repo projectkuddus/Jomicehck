@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from './lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Verify payment and add credits to user account
 // This can be called by admin or automatically by SSLCommerz webhook
@@ -17,6 +17,7 @@ const CREDIT_PACKAGES: Record<string, { credits: number; price: number }> = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -26,14 +27,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
+    // Initialize Supabase client with service role key (bypasses RLS)
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Payment verify - Missing Supabase credentials');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Server configuration error: Supabase credentials missing' 
+      });
+    }
+
+    const supabase = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
     const { paymentId, verified } = req.body as VerifyRequest;
 
     if (!paymentId) {
-      return res.status(400).json({ error: 'Payment ID required' });
+      return res.status(400).json({ success: false, error: 'Payment ID required' });
     }
 
     // Get payment record
@@ -44,7 +68,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (fetchError || !payment) {
-      return res.status(404).json({ error: 'Payment not found' });
+      console.error('❌ Payment fetch error:', fetchError);
+      return res.status(404).json({ 
+        success: false,
+        error: 'Payment not found' 
+      });
     }
 
     if (payment.status === 'completed') {
@@ -69,8 +97,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('id', paymentId);
 
       if (updateError) {
-        console.error('Payment update error:', updateError);
-        return res.status(500).json({ error: 'Failed to update payment' });
+        console.error('❌ Payment update error:', updateError);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to update payment' 
+        });
       }
 
       // Add credits to user account
@@ -81,8 +112,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        return res.status(500).json({ error: 'Failed to fetch user profile' });
+        console.error('❌ Profile fetch error:', profileError);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to fetch user profile' 
+        });
       }
 
       const { error: creditError } = await supabase
@@ -91,8 +125,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('id', payment.user_id);
 
       if (creditError) {
-        console.error('Credit update error:', creditError);
-        return res.status(500).json({ error: 'Failed to add credits' });
+        console.error('❌ Credit update error:', creditError);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to add credits' 
+        });
       }
 
       // Record credit transaction
@@ -124,8 +161,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
   } catch (error: any) {
-    console.error('Payment verification error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Payment verification error:', error);
+    console.error('❌ Error stack:', error.stack);
+    // Always return valid JSON, never HTML
+    return res.status(500).json({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
   }
 }
 

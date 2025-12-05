@@ -39,7 +39,7 @@ type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'pri
 type ResultTab = 'report' | 'chat';
 
 const AppContent: React.FC = () => {
-  const { user, profile, useCredits, isConfigured } = useAuth();
+  const { user, profile, useCredits, isConfigured, refreshProfile } = useAuth();
   
   const [currentPage, setCurrentPage] = useState<PageView>('home');
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -249,7 +249,21 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    // If logged in but not enough credits, open payment
+    // CRITICAL FIX: Refresh profile before checking credits to prevent stale data
+    // This ensures we have latest credits after payment
+    if (user && refreshProfile) {
+      try {
+        console.log('🔄 Refreshing profile to get latest credits...');
+        await refreshProfile();
+        // After refresh, priceCalculation will recalculate with new profile
+        // But we need to check again after a brief moment for state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (refreshError) {
+        console.error('⚠️ Profile refresh failed, continuing with current state:', refreshError);
+      }
+    }
+    
+    // Re-check affordability after potential refresh
     if (!priceCalculation.canAfford) {
       console.log('💳 User needs more credits');
       setIsPaymentOpen(true);
@@ -258,7 +272,7 @@ const AppContent: React.FC = () => {
     
     try {
       console.log('💰 Deducting credits...', priceCalculation.creditsNeeded);
-      // Deduct credits and run analysis
+      // Deduct credits and run analysis (useCredits will re-check from database)
       const success = await useCredits(priceCalculation.creditsNeeded);
       console.log('💰 Credit deduction result:', success);
       

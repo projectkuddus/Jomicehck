@@ -260,21 +260,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Use credits
+  // Use credits - FIXED: Re-check from database to prevent stale data issues
   const useCredits = async (amount: number): Promise<boolean> => {
-    if (!profile || profile.credits < amount) return false;
+    if (!user || !profile) return false;
 
     try {
-      const { error } = await supabase
+      // CRITICAL FIX: Re-fetch profile from database to get latest credits
+      // This prevents race conditions where credits were added but local state is stale
+      const { data: currentProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({ credits: profile.credits - amount })
-        .eq('id', profile.id);
+        .select('credits')
+        .eq('id', user.id)
+        .single();
 
-      if (error) return false;
+      if (fetchError || !currentProfile) {
+        console.error('❌ Failed to fetch current credits:', fetchError);
+        return false;
+      }
 
-      setProfile({ ...profile, credits: profile.credits - amount });
+      const currentCredits = currentProfile.credits || 0;
+
+      // Check if user actually has enough credits (from database, not stale state)
+      if (currentCredits < amount) {
+        console.warn('⚠️ Insufficient credits:', { currentCredits, needed: amount });
+        // Update local state to reflect reality
+        setProfile({ ...profile, credits: currentCredits });
+        return false;
+      }
+
+      // Deduct credits using database value, not local state
+      const newCredits = currentCredits - amount;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ credits: newCredits })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('❌ Failed to deduct credits:', updateError);
+        return false;
+      }
+
+      // Update local state with actual database value
+      setProfile({ ...profile, credits: newCredits });
+      console.log('✅ Credits deducted:', { amount, oldCredits: currentCredits, newCredits });
       return true;
-    } catch {
+    } catch (error: any) {
+      console.error('❌ Credit deduction error:', error);
       return false;
     }
   };

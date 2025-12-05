@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('X-RateLimit-Reset', new Date(limit.resetTime).toISOString());
 
   try {
-    const { documents } = req.body;
+    const { documents, metadata } = req.body;
 
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
       return res.status(400).json({ error: "Invalid request: 'documents' array is required" });
@@ -47,6 +47,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!doc.name || !doc.mimeType || !doc.data) {
         return res.status(400).json({ error: "Invalid document format: each document must have 'name', 'mimeType', and 'data' fields" });
       }
+    }
+
+    // Log metadata for debugging
+    if (metadata) {
+      console.log('📄 Analysis request:', {
+        totalDocuments: metadata.totalDocuments,
+        documentCount: documents.length,
+      });
     }
 
     const result = await analyzeDocuments(documents as DocumentInput[]);

@@ -20,12 +20,21 @@ const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024; // 4MB to stay safely under 4.5MB limi
  * Analyze a single batch of documents
  */
 const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; data: string }>): Promise<AnalysisResult> => {
+  // Add metadata about document count for detection
+  const requestBody = {
+    documents,
+    metadata: {
+      totalDocuments: documents.length,
+      documentNames: documents.map(d => d.name),
+    }
+  };
+
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ documents }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -41,6 +50,7 @@ const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; d
 
 /**
  * Merge multiple analysis results into one comprehensive result
+ * CRITICAL: Check if results indicate different deeds were analyzed
  */
 const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
   if (results.length === 0) {
@@ -49,6 +59,28 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
 
   if (results.length === 1) {
     return results[0];
+  }
+
+  // CRITICAL CHECK: Detect if different batches analyzed different deeds
+  // Compare deed numbers, dates, and locations from summaries
+  const deedIdentifiers = results.map(r => ({
+    deedNo: r.summary?.deedNo || '',
+    date: r.summary?.date || '',
+    mouza: r.summary?.mouza || '',
+  }));
+
+  const uniqueDeeds = new Set(
+    deedIdentifiers
+      .filter(d => d.deedNo || d.date || d.mouza) // Only count if has identifier
+      .map(d => `${d.deedNo}|${d.date}|${d.mouza}`)
+  );
+
+  const hasMultipleDeeds = uniqueDeeds.size > 1;
+
+  // CRITICAL: If multiple different deeds detected, add warning and increase risk
+  if (hasMultipleDeeds) {
+    console.warn('⚠️ CRITICAL: Multiple different deeds detected in analysis!');
+    allCriticalIssues.add('⚠️ সতর্কতা: একাধিক ভিন্ন দলিল একসাথে আপলোড করা হয়েছে। এটি অত্যন্ত ঝুঁকিপূর্ণ। প্রতিটি দলিল আলাদাভাবে বিশ্লেষণ করা উচিত। ভিন্ন দলিল একসাথে বিশ্লেষণ করলে ভুল ফলাফল পাওয়া যায় যা আইনি সমস্যা সৃষ্টি করতে পারে।');
   }
 
   // Aggregate all results
@@ -79,7 +111,14 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
 
   // Use the first result as base, but aggregate all data
   const baseResult = results[0];
-  const avgRiskScore = Math.round(totalRiskScore / results.length);
+  let avgRiskScore = Math.round(totalRiskScore / results.length);
+  
+  // CRITICAL: If multiple deeds detected, significantly increase risk score
+  if (hasMultipleDeeds) {
+    avgRiskScore = Math.min(100, avgRiskScore + 35); // Add 35 points for mixed deeds
+    maxRiskLevel = 'Critical'; // Force to Critical level
+    console.warn('⚠️ Risk score increased due to multiple deeds:', avgRiskScore);
+  }
 
   return {
     ...baseResult,

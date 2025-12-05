@@ -301,16 +301,39 @@
     </style>
     
     <!-- Google Analytics -->
-    <!-- TODO: Replace GA_MEASUREMENT_ID with your actual Google Analytics ID -->
-    <!--
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <!-- Replace with your GA4 Measurement ID from analytics.google.com -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'GA_MEASUREMENT_ID');
+      const gaId = import.meta.env?.VITE_GA_MEASUREMENT_ID;
+      if (gaId) {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+        document.head.appendChild(script);
+        
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', gaId);
+      }
     </script>
-    -->
+
+    <!-- Tawk.to Live Chat -->
+    <!-- Replace with your Tawk.to Property ID and Widget ID from dashboard.tawk.to -->
+    <script type="text/javascript">
+      var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
+      (function(){
+        var s1 = document.createElement("script"), s0 = document.getElementsByTagName("script")[0];
+        s1.async = true;
+        const tawkId = import.meta.env?.VITE_TAWK_PROPERTY_ID;
+        const tawkWidget = import.meta.env?.VITE_TAWK_WIDGET_ID;
+        if (tawkId && tawkWidget) {
+          s1.src = 'https://embed.tawk.to/' + tawkId + '/' + tawkWidget;
+          s1.charset = 'UTF-8';
+          s1.setAttribute('crossorigin', '*');
+          s0.parentNode.insertBefore(s1, s0);
+        }
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
     <!-- Noscript fallback for SEO -->

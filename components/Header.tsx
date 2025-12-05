@@ -4,7 +4,7 @@ import UserMenu from './UserMenu';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
-  onNavigate: (page: 'home' | 'how-it-works' | 'pricing' | 'support') => void;
+  onNavigate: (page: 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy') => void;
   onToggleHistory: () => void;
   onOpenAuth: () => void;
   currentPage: string;

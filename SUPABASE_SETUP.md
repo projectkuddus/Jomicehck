@@ -99,6 +99,35 @@ CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
+
+-- Create payment_transactions table
+CREATE TABLE payment_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  package_id TEXT NOT NULL, -- 'starter', 'popular', 'pro', 'agent'
+  amount INTEGER NOT NULL,
+  credits INTEGER NOT NULL,
+  payment_method TEXT NOT NULL, -- 'bkash', 'nagad', 'sslcommerz'
+  transaction_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'completed', 'failed'
+  verified_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS for payment transactions
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can view their own payment transactions
+CREATE POLICY "Users can view own payments" ON payment_transactions
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Policy: Users can insert their own payment transactions
+CREATE POLICY "Users can insert own payments" ON payment_transactions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Index for faster lookups
+CREATE INDEX idx_payment_transactions_user_id ON payment_transactions(user_id);
+CREATE INDEX idx_payment_transactions_status ON payment_transactions(status);
 ```
 
 Click **"Run"** to execute.

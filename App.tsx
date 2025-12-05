@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import FileUpload from './components/FileUpload';
 import AnalysisReport from './components/AnalysisReport';
 import LoadingState from './components/LoadingState';
@@ -8,6 +9,8 @@ import PaymentModal from './components/PaymentModal';
 import HowItWorks from './components/HowItWorks';
 import Pricing from './components/Pricing';
 import Support from './components/Support';
+import Terms from './components/Terms';
+import Privacy from './components/Privacy';
 import ChatInterface from './components/ChatInterface'; 
 import HistorySidebar from './components/HistorySidebar';
 import AuthModal from './components/AuthModal';
@@ -31,7 +34,7 @@ import {
   LogIn
 } from 'lucide-react';
 
-type PageView = 'home' | 'how-it-works' | 'pricing' | 'support';
+type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy';
 type ResultTab = 'report' | 'chat';
 
 const AppContent: React.FC = () => {
@@ -537,10 +540,17 @@ const AppContent: React.FC = () => {
             {currentPage === 'how-it-works' && <HowItWorks />}
             {currentPage === 'pricing' && <Pricing />}
             {currentPage === 'support' && <Support />}
+            {currentPage === 'terms' && <Terms />}
+            {currentPage === 'privacy' && <Privacy />}
           </div>
         )}
 
       </main>
+
+      {/* Footer - Only show on static pages */}
+      {currentPage !== 'home' && (
+        <Footer onNavigate={setCurrentPage} />
+      )}
     </div>
   );
 };

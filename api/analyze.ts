@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { analyzeDocuments } from './lib/geminiService.js';
 import { DocumentInput } from './lib/types.js';
+import { rateLimit, getClientId } from './rate-limit.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -15,6 +16,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting: 50 requests per 15 minutes per user/IP
+  const clientId = getClientId(req);
+  const limit = rateLimit(clientId, 50, 15 * 60 * 1000);
+  
+  if (!limit.allowed) {
+    res.setHeader('X-RateLimit-Limit', '50');
+    res.setHeader('X-RateLimit-Remaining', '0');
+    res.setHeader('X-RateLimit-Reset', new Date(limit.resetTime).toISOString());
+    return res.status(429).json({ 
+      error: 'Too many requests. Please try again later.',
+      resetTime: limit.resetTime 
+    });
+  }
+
+  res.setHeader('X-RateLimit-Limit', '50');
+  res.setHeader('X-RateLimit-Remaining', limit.remaining.toString());
+  res.setHeader('X-RateLimit-Reset', new Date(limit.resetTime).toISOString());
 
   try {
     const { documents } = req.body;

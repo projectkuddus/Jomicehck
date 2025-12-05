@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { X, CheckCircle, Lock, Sparkles, CreditCard } from 'lucide-react';
+import { X, CheckCircle, Lock, Sparkles, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -18,8 +19,12 @@ const creditPackages = [
 ];
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
-  const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
+  const { user, refreshProfile } = useAuth();
+  const [method, setMethod] = useState<'bkash' | 'nagad' | 'sslcommerz'>('bkash');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+  const [showTransactionInput, setShowTransactionInput] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(() => {
     // Auto-select the best package for user's needs
     const recommended = creditPackages.find(p => p.credits >= creditsNeeded) || creditPackages[1];
@@ -29,15 +34,78 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
   if (!isOpen) return null;
 
   const currentPackage = creditPackages.find(p => p.credits === selectedPackage)!;
+  const packageId = creditPackages.findIndex(p => p.credits === selectedPackage) === 0 ? 'starter' :
+                    creditPackages.findIndex(p => p.credits === selectedPackage) === 1 ? 'popular' :
+                    creditPackages.findIndex(p => p.credits === selectedPackage) === 2 ? 'pro' : 'agent';
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (!user) {
+      setError('Please login to make a payment');
+      return;
+    }
+
+    // For bKash/Nagad, require transaction ID
+    if ((method === 'bkash' || method === 'nagad') && !transactionId.trim()) {
+      setShowTransactionInput(true);
+      setError('Please enter your transaction ID');
+      return;
+    }
+
     setIsProcessing(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const response = await fetch('/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          packageId: packageId,
+          paymentMethod: method,
+          transactionId: transactionId || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Payment failed');
+      }
+
+      if (data.status === 'pending_verification') {
+        // Manual verification needed
+        setError(null);
+        alert(`Payment submitted! Your ${data.credits} credits will be added after verification. Payment ID: ${data.paymentId}`);
+        await refreshProfile();
+        onConfirm();
+        onClose();
+      } else if (data.paymentUrl) {
+        // SSLCommerz redirect
+        window.location.href = data.paymentUrl;
+      } else {
+        // Success
+        await refreshProfile();
+        onConfirm();
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      setError(err.message || 'Payment failed. Please try again.');
+    } finally {
       setIsProcessing(false);
-      onConfirm();
-    }, 2000);
+    }
   };
+
+  // Reset form when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setTransactionId('');
+      setError(null);
+      setShowTransactionInput(false);
+    }
+  }, [isOpen]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -124,9 +192,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
 
           {/* Payment Methods */}
           <div className="text-sm font-semibold text-slate-700 mb-3">Payment Method</div>
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-3 gap-3 mb-6">
             <div 
-              onClick={() => setMethod('bkash')}
+              onClick={() => { setMethod('bkash'); setShowTransactionInput(true); }}
               className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
               <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs">bKash</div>
@@ -137,7 +205,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
             </div>
 
             <div 
-              onClick={() => setMethod('nagad')}
+              onClick={() => { setMethod('nagad'); setShowTransactionInput(true); }}
               className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
               <div className="w-10 h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-xs">Nagad</div>
@@ -146,7 +214,45 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
               </div>
               {method === 'nagad' && <CheckCircle size={16} className="text-orange-600" />}
             </div>
+
+            <div 
+              onClick={() => { setMethod('sslcommerz'); setShowTransactionInput(false); }}
+              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'sslcommerz' ? 'border-green-500 bg-green-50' : 'border-slate-100 hover:border-slate-200'}`}
+            >
+              <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-xs">Card</div>
+              <div className="flex-1">
+                <p className="font-bold text-slate-800 text-sm">Card</p>
+              </div>
+              {method === 'sslcommerz' && <CheckCircle size={16} className="text-green-600" />}
+            </div>
           </div>
+
+          {/* Transaction ID Input for bKash/Nagad */}
+          {(showTransactionInput && (method === 'bkash' || method === 'nagad')) && (
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Transaction ID ({method === 'bkash' ? 'bKash' : 'Nagad'})
+              </label>
+              <input
+                type="text"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder={`Enter your ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Send ৳{currentPackage.price} to our {method === 'bkash' ? 'bKash' : 'Nagad'} number, then enter the transaction ID here.
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertCircle size={16} className="text-red-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           <button
             onClick={handlePay}
@@ -155,7 +261,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
               ${isProcessing ? 'bg-slate-400 cursor-not-allowed' : 'bg-brand-600 hover:bg-brand-700'}
             `}
           >
-            {isProcessing ? 'Processing...' : `Pay ৳${currentPackage.price} for ${currentPackage.credits} Credits`}
+            {isProcessing ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ৳${currentPackage.price} for ${currentPackage.credits} Credits`
+            )}
           </button>
           
           <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">

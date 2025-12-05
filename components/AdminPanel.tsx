@@ -47,8 +47,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [sortField, setSortField] = useState<'created_at' | 'credits'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Simple admin password (change this!)
-  const ADMIN_PASSWORD = 'jomicheck2024admin';
+  // Admin password from environment variable (set in Vercel)
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'jomicheck2024admin';
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {

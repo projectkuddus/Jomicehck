@@ -36,6 +36,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Check if this is a password reset (user clicked reset link)
+  React.useEffect(() => {
+    if (isOpen) {
+      const hash = window.location.hash;
+      if (hash.includes('type=recovery') || hash.includes('access_token')) {
+        // User came from password reset link - switch to reset password mode
+        setMode('reset-password');
+        setStep('password');
+        // Clear hash
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const validateEmail = (email: string) => {
@@ -179,6 +193,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  // Handle password reset submission (after clicking reset link)
+  const handleResetPasswordSubmit = async () => {
+    if (!password || !validatePassword(password)) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = await updatePassword(password);
+    
+    setLoading(false);
+    
+    if (result.success) {
+      alert('Password updated successfully! You can now login with your new password.');
+      setMode('login');
+      setStep('email');
+      setPassword('');
+      setConfirmPassword('');
+      onClose();
+    } else {
+      setError(result.error || 'Failed to update password. The reset link may have expired.');
+    }
+  };
+
   // Handle referral code
   const handleApplyReferral = async () => {
     if (!referralCode) {
@@ -292,6 +337,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               {mode === 'signup' && step === 'referral' && <Gift size={24} />}
               {mode === 'signup' && step === 'success' && <CheckCircle2 size={24} />}
               {mode === 'forgot-password' && <Mail size={24} />}
+              {mode === 'reset-password' && <Lock size={24} />}
             </div>
             <div>
               <h3 className="text-lg font-bold">
@@ -311,6 +357,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 {mode === 'signup' && step === 'referral' && 'Have a friend\'s code?'}
                 {mode === 'signup' && step === 'success' && 'You\'re all set'}
                 {mode === 'forgot-password' && 'We\'ll send you a reset link'}
+                {mode === 'reset-password' && 'Set your new password'}
               </p>
             </div>
           </div>

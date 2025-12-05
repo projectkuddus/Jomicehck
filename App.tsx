@@ -66,6 +66,17 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('hashchange', checkAdminAccess);
   }, []);
 
+  // Check for password reset hash (Supabase redirects here)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery') || hash.includes('access_token')) {
+      // Password reset link clicked - open auth modal in reset mode
+      setIsAuthOpen(true);
+      // Clear the hash
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
   const [analysis, setAnalysis] = useState<AnalysisState>({
     isLoading: false,
     isStreaming: false,

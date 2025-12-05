@@ -11,6 +11,7 @@ import Support from './components/Support';
 import ChatInterface from './components/ChatInterface'; 
 import HistorySidebar from './components/HistorySidebar';
 import AuthModal from './components/AuthModal';
+import AdminPanel from './components/AdminPanel';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import { analyzeDocuments } from './services/geminiService';
@@ -40,11 +41,27 @@ const AppContent: React.FC = () => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>('report');
   
   // History State
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Check for admin access via URL hash
+  useEffect(() => {
+    const checkAdminAccess = () => {
+      if (window.location.hash === '#admin') {
+        setIsAdminOpen(true);
+        // Clear the hash to hide the admin URL
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+    
+    checkAdminAccess();
+    window.addEventListener('hashchange', checkAdminAccess);
+    return () => window.removeEventListener('hashchange', checkAdminAccess);
+  }, []);
 
   const [analysis, setAnalysis] = useState<AnalysisState>({
     isLoading: false,
@@ -256,6 +273,11 @@ const AppContent: React.FC = () => {
         onClose={() => setIsAuthOpen(false)}
       />
 
+      {/* Admin Panel - Access via jomicheck.com/#admin */}
+      {isAdminOpen && (
+        <AdminPanel onClose={() => setIsAdminOpen(false)} />
+      )}
+
       <PaymentModal 
         isOpen={isPaymentOpen} 
         onClose={() => setIsPaymentOpen(false)} 
@@ -286,13 +308,34 @@ const AppContent: React.FC = () => {
                   </p>
                 </div>
 
-                {/* File Upload Area */}
+                {/* File Upload Area - Requires Login */}
                 <div className="mb-8">
-                   <FileUpload 
-                    files={files} 
-                    setFiles={setFiles} 
-                    disabled={analysis.isLoading} 
-                  />
+                  {user ? (
+                    <FileUpload 
+                      files={files} 
+                      setFiles={setFiles} 
+                      disabled={analysis.isLoading} 
+                    />
+                  ) : (
+                    <div 
+                      onClick={() => setIsAuthOpen(true)}
+                      className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-all"
+                    >
+                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <LogIn size={28} className="text-slate-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-700 mb-2">Login Required</h3>
+                      <p className="text-sm text-slate-500 mb-4">
+                        Please login or sign up to upload and analyze documents
+                      </p>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 transition-colors">
+                        <LogIn size={16} /> Login / Sign Up
+                      </span>
+                      <p className="text-xs text-brand-600 mt-3">
+                        🎁 Get {FREE_CREDITS} free credits on signup!
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Area */}

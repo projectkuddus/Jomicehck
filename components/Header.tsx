@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileCheck, Menu, X, History } from 'lucide-react';
 import UserMenu from './UserMenu';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   onNavigate: (page: 'home' | 'how-it-works' | 'pricing' | 'support') => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth, currentPage }) => {
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -20,6 +22,15 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
 
   const handleNavClick = (page: any) => {
     onNavigate(page);
+    setIsMenuOpen(false);
+  };
+
+  const handleHistoryClick = () => {
+    if (user) {
+      onToggleHistory();
+    } else {
+      onOpenAuth();
+    }
     setIsMenuOpen(false);
   };
 
@@ -55,13 +66,16 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
           
           <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
           
-          <button 
-            onClick={onToggleHistory}
-            className="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-brand-600 transition-colors bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
-          >
-            <History size={18} />
-            <span>My Reports</span>
-          </button>
+          {/* My Reports - Only show if logged in */}
+          {user && (
+            <button 
+              onClick={handleHistoryClick}
+              className="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-brand-600 transition-colors bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
+            >
+              <History size={18} />
+              <span>My Reports</span>
+            </button>
+          )}
 
           {/* User Menu */}
           <UserMenu onOpenAuth={onOpenAuth} />
@@ -89,16 +103,15 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
                 {item.label}
               </button>
             ))}
-            <button 
-              onClick={() => {
-                onToggleHistory();
-                setIsMenuOpen(false);
-              }}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-700 py-2 px-2 border-t border-slate-100 mt-2 pt-4"
-            >
-              <History size={20} />
-              <span>My Reports</span>
-            </button>
+            {user && (
+              <button 
+                onClick={handleHistoryClick}
+                className="flex items-center gap-2 text-sm font-semibold text-slate-700 py-2 px-2 border-t border-slate-100 mt-2 pt-4"
+              >
+                <History size={20} />
+                <span>My Reports</span>
+              </button>
+            )}
           </nav>
         </div>
       )}

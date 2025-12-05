@@ -332,6 +332,7 @@ const AppContent: React.FC = () => {
         currentPage={currentPage} 
         onToggleHistory={() => setIsHistoryOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onBuyCredits={() => setIsPaymentOpen(true)}
       />
       
       <HistorySidebar 

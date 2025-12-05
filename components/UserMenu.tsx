@@ -55,8 +55,27 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     setIsOpen(false);
   };
 
-  // Show loading state while checking auth
+  // Show loading state while checking auth (with timeout fallback)
   if (loading) {
+    // After 3 seconds, show login button even if still loading (fallback)
+    const [showFallback, setShowFallback] = useState(false);
+    useEffect(() => {
+      const timer = setTimeout(() => setShowFallback(true), 3000);
+      return () => clearTimeout(timer);
+    }, [loading]);
+
+    if (showFallback) {
+      return (
+        <button
+          onClick={onOpenAuth}
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl transition-colors"
+        >
+          <User size={18} />
+          <span className="hidden sm:inline">Login</span>
+        </button>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl">
         <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-600 rounded-full animate-spin"></div>

@@ -119,15 +119,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email).then(setProfile);
+    // Timeout fallback - force loading to false after 5 seconds
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth initialization timeout - forcing loading to false');
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    }, 5000);
+
+    // Get initial session with error handling
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        clearTimeout(timeoutId);
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id, session.user.email)
+            .then(setProfile)
+            .catch(err => {
+              console.error('Error fetching profile:', err);
+              setProfile(null);
+            })
+            .finally(() => {
+              setLoading(false);
+            });
+        } else {
+          setProfile(null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        clearTimeout(timeoutId);
+        console.error('Session fetch error:', err);
+        setLoading(false);
+      });
+
+    return () => clearTimeout(timeoutId);
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -135,8 +169,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id, session.user.email);
-        setProfile(profile);
+        try {
+          const profile = await fetchProfile(session.user.id, session.user.email);
+          setProfile(profile);
+        } catch (err) {
+          console.error('Error fetching profile on auth change:', err);
+          setProfile(null);
+        }
       } else {
         setProfile(null);
       }

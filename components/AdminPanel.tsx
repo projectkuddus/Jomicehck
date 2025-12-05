@@ -47,6 +47,8 @@ interface AdminStats {
   totalCredits: number;
   usersToday: number;
   usersThisWeek: number;
+  totalRevenue?: number;
+  paymentsToday?: number;
 }
 
 interface AdminPanelProps {
@@ -62,9 +64,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [payments, setPayments] = useState<PaymentTransaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'payments'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'payments'>('payments'); // Default to payments
   const [sortField, setSortField] = useState<'created_at' | 'credits'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Admin password from environment variable (set in Vercel)
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'jomicheck2024admin';
@@ -129,12 +133,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       const usersToday = usersData?.filter(u => new Date(u.created_at) >= today).length || 0;
       const usersThisWeek = usersData?.filter(u => new Date(u.created_at) >= weekAgo).length || 0;
 
+      // Calculate payment stats
+      const completedPayments = paymentsWithEmails.filter(p => p.status === 'completed');
+      const totalRevenue = completedPayments.reduce((sum, p) => sum + p.amount, 0);
+      const paymentsToday = paymentsWithEmails.filter(p => {
+        const paymentDate = new Date(p.created_at);
+        return paymentDate >= today;
+      }).length;
+
       setStats({
         totalUsers,
         totalCredits,
         usersToday,
-        usersThisWeek
-      });
+        usersThisWeek,
+        totalRevenue,
+        paymentsToday
+      } as AdminStats);
 
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
@@ -201,6 +215,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   }, [sortField, sortOrder]);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!isAuthenticated || !autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchData();
+      setLastRefresh(new Date());
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, autoRefresh]);
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-BD', {
       year: 'numeric',
@@ -266,13 +292,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           <h1 className="text-xl font-bold">JomiCheck Admin Panel</h1>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Clock size={12} />
+            Last: {lastRefresh.toLocaleTimeString()}
+          </div>
           <button
-            onClick={fetchData}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              autoRefresh 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-slate-700 hover:bg-slate-600 text-white'
+            }`}
+            title={autoRefresh ? 'Auto-refresh enabled (30s)' : 'Auto-refresh disabled'}
+          >
+            <RefreshCcw size={16} className={autoRefresh && !loading ? 'animate-spin' : ''} />
+            {autoRefresh ? 'Auto' : 'Manual'}
+          </button>
+          <button
+            onClick={() => {
+              fetchData();
+              setLastRefresh(new Date());
+            }}
             disabled={loading}
             className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors"
           >
             <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            Refresh Now
           </button>
           <button
             onClick={onClose}
@@ -320,29 +365,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-slate-500 text-sm font-medium">Total Users</span>
                 <Users size={20} className="text-blue-500" />
               </div>
               <div className="text-3xl font-bold text-slate-900">{stats.totalUsers}</div>
+              <div className="text-xs text-slate-500 mt-1">{stats.usersToday} new today</div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-slate-500 text-sm font-medium">Total Revenue</span>
+                <DollarSign size={20} className="text-green-500" />
+              </div>
+              <div className="text-3xl font-bold text-slate-900">৳{stats.totalRevenue || 0}</div>
+              <div className="text-xs text-slate-500 mt-1">{stats.paymentsToday || 0} payments today</div>
             </div>
             
             <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-slate-500 text-sm font-medium">Total Credits</span>
-                <CreditCard size={20} className="text-green-500" />
+                <CreditCard size={20} className="text-purple-500" />
               </div>
               <div className="text-3xl font-bold text-slate-900">{stats.totalCredits}</div>
-            </div>
-            
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-500 text-sm font-medium">New Today</span>
-                <Calendar size={20} className="text-purple-500" />
-              </div>
-              <div className="text-3xl font-bold text-slate-900">{stats.usersToday}</div>
+              <div className="text-xs text-slate-500 mt-1">In circulation</div>
             </div>
             
             <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
@@ -351,6 +399,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <TrendingUp size={20} className="text-orange-500" />
               </div>
               <div className="text-3xl font-bold text-slate-900">{stats.usersThisWeek}</div>
+              <div className="text-xs text-slate-500 mt-1">New users</div>
             </div>
           </div>
         )}
@@ -359,10 +408,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'payments' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Payment Transactions</h2>
-              <span className="text-sm text-slate-500">
-                {payments.filter(p => p.status === 'pending').length} pending
-              </span>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Payment Transactions</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Shows all payments with user details. Updates automatically every 30 seconds.
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-semibold text-slate-900">
+                  {payments.filter(p => p.status === 'completed').length} completed
+                </div>
+                <div className="text-xs text-slate-500">
+                  {payments.filter(p => p.status === 'pending').length} pending
+                </div>
+              </div>
             </div>
             
             <div className="overflow-x-auto">
@@ -381,10 +440,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-slate-50">
+                  {payments.map((payment) => {
+                    const isNew = new Date(payment.created_at) > new Date(Date.now() - 5 * 60 * 1000); // Last 5 minutes
+                    return (
+                    <tr 
+                      key={payment.id} 
+                      className={`hover:bg-slate-50 transition-colors ${
+                        isNew ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4">
-                        <span className="text-sm text-slate-900">{payment.user_email || 'Unknown'}</span>
+                        <div className="flex items-center gap-2">
+                          <Mail size={14} className="text-slate-400" />
+                          <span className="text-sm font-medium text-slate-900">{payment.user_email || 'Unknown'}</span>
+                          {isNew && (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                              NEW
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-slate-600 capitalize">{payment.package_id}</span>
@@ -446,7 +520,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   
                   {payments.length === 0 && (
                     <tr>
@@ -465,7 +540,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'users' && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">All Users</h2>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">All Users</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Shows all registered users. Updates automatically when new accounts are created.
+              </p>
+            </div>
             <span className="text-sm text-slate-500">{users.length} total</span>
           </div>
           
@@ -501,12 +581,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50">
+                {users.map((user) => {
+                  const isNew = new Date(user.created_at) > new Date(Date.now() - 5 * 60 * 1000); // Last 5 minutes
+                  return (
+                  <tr 
+                    key={user.id} 
+                    className={`hover:bg-slate-50 transition-colors ${
+                      isNew ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                    }`}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Mail size={14} className="text-slate-400" />
-                        <span className="text-sm text-slate-900">{user.email || 'N/A'}</span>
+                        <span className="text-sm font-medium text-slate-900">{user.email || 'N/A'}</span>
+                        {isNew && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                            NEW
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -533,7 +625,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 
                 {users.length === 0 && (
                   <tr>
@@ -552,7 +645,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-xl">
           <h3 className="font-bold text-amber-800 mb-2">Admin Instructions</h3>
           <ul className="text-sm text-amber-700 space-y-2">
-            <li><strong>Payment Verification:</strong> When a user submits a payment, check your bKash/Nagad account. If payment received, click "Verify" to add credits automatically.</li>
+            <li><strong>Payment System:</strong> Payments are automatically approved and credits are added instantly. Review payments here to verify transactions in your bKash account.</li>
+            <li><strong>Auto-Refresh:</strong> The panel updates automatically every 30 seconds. Toggle "Auto" button to enable/disable.</li>
+            <li><strong>New Entries:</strong> New accounts and payments are highlighted with a "NEW" badge for the first 5 minutes.</li>
             <li><strong>Manual Credit Addition:</strong> Go to Supabase Dashboard → Table Editor → profiles → Edit user → Update credits field</li>
             <li><strong>Free Credits:</strong> Users get 5 free credits on signup</li>
             <li><strong>Referral Bonus:</strong> 10 credits for both referrer and referee</li>

@@ -39,7 +39,7 @@ type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'pri
 type ResultTab = 'report' | 'chat';
 
 const AppContent: React.FC = () => {
-  const { user, profile, useCredits, isConfigured, refreshProfile, addCredits } = useAuth();
+  const { user, profile, useCredits, isConfigured, refreshProfile, addCredits, loading: authLoading } = useAuth();
   
   const [currentPage, setCurrentPage] = useState<PageView>('home');
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -198,13 +198,27 @@ const AppContent: React.FC = () => {
 
   // Dynamic Credit-Based Pricing
   const priceCalculation = useMemo(() => {
-    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, userCredits: 0, canAfford: false, needsLogin: false };
+    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, userCredits: 0, canAfford: false, needsLogin: false, isLoading: false };
     
     // Calculate total "pages" (Images = 1, PDF = actual page count)
     const totalPages = files.reduce((acc, file) => acc + file.estimatedPages, 0);
+    
+    // CRITICAL FIX: If user exists but profile is loading, wait (don't show needsLogin)
+    if (user && !profile && authLoading) {
+      return {
+        total: totalPages * CREDIT_RATE,
+        pages: totalPages,
+        creditsNeeded: totalPages,
+        userCredits: 0,
+        canAfford: false,
+        needsLogin: false, // Don't prompt login if profile is loading
+        isLoading: true // Profile is loading
+      };
+    }
+    
     const userCredits = profile?.credits || 0;
     
-    // If user is logged in, check their credits
+    // If user is logged in and profile is loaded, check their credits
     if (user && profile) {
       const canAfford = userCredits >= totalPages;
       return { 
@@ -213,7 +227,8 @@ const AppContent: React.FC = () => {
         creditsNeeded: totalPages,
         userCredits,
         canAfford,
-        needsLogin: false
+        needsLogin: false,
+        isLoading: false
       };
     }
     
@@ -224,22 +239,33 @@ const AppContent: React.FC = () => {
       creditsNeeded: totalPages,
       userCredits: 0,
       canAfford: false,
-      needsLogin: true
+      needsLogin: true,
+      isLoading: false
     };
-  }, [files, user, profile]);
+  }, [files, user, profile, authLoading]);
 
   const handleStartAnalysis = async () => {
     console.log('🔍 Analyze button clicked:', {
       filesCount: files.length,
       needsLogin: priceCalculation.needsLogin,
+      isLoading: priceCalculation.isLoading,
       canAfford: priceCalculation.canAfford,
       creditsNeeded: priceCalculation.creditsNeeded,
       userCredits: priceCalculation.userCredits,
+      hasUser: !!user,
+      hasProfile: !!profile,
+      authLoading,
     });
 
     if (files.length === 0) {
       console.warn('⚠️ No files to analyze');
       return;
+    }
+    
+    // CRITICAL FIX: If profile is loading, wait for it
+    if (user && !profile && authLoading) {
+      console.log('⏳ Profile is loading, please wait...');
+      return; // Don't proceed, UI should show loading state
     }
     
     // If not logged in, prompt to login
@@ -249,15 +275,28 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // CRITICAL FIX: If user exists but profile is null, try to fetch it
+    if (user && !profile && !authLoading) {
+      console.log('⚠️ User exists but profile is missing - fetching...');
+      if (refreshProfile) {
+        await refreshProfile();
+        // Wait a moment for state to update
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Re-check - if still no profile, show error
+        // Note: We can't check profile here directly, but refreshProfile should update it
+        // The next render will have the updated profile
+      }
+    }
+    
     // CRITICAL FIX: Refresh profile before checking credits to prevent stale data
     // This ensures we have latest credits after payment
-    if (user && refreshProfile) {
+    if (user && profile && refreshProfile) {
       try {
         console.log('🔄 Refreshing profile to get latest credits...');
         await refreshProfile();
         // After refresh, priceCalculation will recalculate with new profile
         // But we need to check again after a brief moment for state to update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       } catch (refreshError) {
         console.error('⚠️ Profile refresh failed, continuing with current state:', refreshError);
       }

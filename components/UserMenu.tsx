@@ -9,9 +9,13 @@ interface UserMenuProps {
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits, onNavigate }) => {
-  const { user, profile, signOut, isConfigured, loading } = useAuth();
+  const { user, profile, signOut, isConfigured, loading, applyReferralCode, refreshProfile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [referralInput, setReferralInput] = useState('');
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralError, setReferralError] = useState('');
+  const [referralSuccess, setReferralSuccess] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -56,6 +60,38 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits, onNavigat
     setIsOpen(false);
     await signOut();
     window.location.replace('/');
+  };
+
+  const handleApplyReferralCode = async () => {
+    if (!referralInput.trim()) {
+      setReferralError('Please enter a referral code');
+      return;
+    }
+
+    setReferralLoading(true);
+    setReferralError('');
+    setReferralSuccess(false);
+
+    try {
+      const result = await applyReferralCode(referralInput.trim());
+      if (result.success) {
+        setReferralSuccess(true);
+        setReferralInput('');
+        // Refresh profile to show updated credits
+        if (refreshProfile) {
+          await refreshProfile();
+        }
+        setTimeout(() => {
+          setReferralSuccess(false);
+        }, 3000);
+      } else {
+        setReferralError(result.error || 'Failed to apply referral code');
+      }
+    } catch (err: any) {
+      setReferralError(err.message || 'Failed to apply referral code');
+    } finally {
+      setReferralLoading(false);
+    }
   };
 
   // Simple loading state - show briefly, max 3 seconds
@@ -138,7 +174,48 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits, onNavigat
             <div className="text-3xl font-black text-brand-700">{displayCredits}</div>
           </div>
 
-          {/* Referral Section - only show if profile loaded */}
+          {/* Referral Code Input Section - Show if user hasn't used a referral code */}
+          {profile && !profile.referred_by && (
+            <div className="p-4 border-b border-slate-100 bg-amber-50">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                <Gift size={16} className="text-amber-500" />
+                Enter Referral Code
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  value={referralInput}
+                  onChange={(e) => {
+                    setReferralInput(e.target.value.toUpperCase().trim());
+                    setReferralError('');
+                  }}
+                  placeholder="JOMIXXXX"
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={referralLoading}
+                />
+                <button
+                  onClick={handleApplyReferralCode}
+                  disabled={referralLoading || !referralInput.trim()}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {referralLoading ? '...' : 'Apply'}
+                </button>
+              </div>
+              {referralError && (
+                <p className="text-xs text-red-600 mt-1">{referralError}</p>
+              )}
+              {referralSuccess && (
+                <p className="text-xs text-green-600 font-medium mt-1">
+                  ✓ Referral code applied! +{REFERRAL_BONUS_CREDITS} credits added
+                </p>
+              )}
+              <p className="text-xs text-slate-500 mt-2">
+                Get {REFERRAL_BONUS_CREDITS} free credits when you use a friend's code
+              </p>
+            </div>
+          )}
+
+          {/* Your Referral Code Section - Show if profile has referral code */}
           {profile?.referral_code && (
             <div className="p-4 border-b border-slate-100">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">

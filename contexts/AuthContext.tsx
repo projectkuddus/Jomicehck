@@ -113,10 +113,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .single();
 
         if (createError) {
-          console.error('Failed to create profile:', createError);
-          return null;
+          console.error('❌ Failed to create profile:', createError);
+          console.error('❌ Profile data attempted:', newProfile);
+          
+          // CRITICAL FIX: Retry profile creation once if it fails
+          // Sometimes RLS policies or timing issues cause first attempt to fail
+          console.log('🔄 Retrying profile creation...');
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          
+          const { data: retryProfile, error: retryError } = await supabase
+            .from('profiles')
+            .insert(newProfile)
+            .select()
+            .single();
+          
+          if (retryError) {
+            console.error('❌ Profile creation retry also failed:', retryError);
+            // Still return null, but log detailed error
+            return null;
+          }
+          
+          console.log('✅ Profile created on retry');
+          return retryProfile as UserProfile;
         }
 
+        console.log('✅ Profile created successfully:', createdProfile?.id);
         return createdProfile as UserProfile;
       }
 

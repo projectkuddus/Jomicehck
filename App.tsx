@@ -95,10 +95,27 @@ const AppContent: React.FC = () => {
 
   // Close auth modal when user successfully logs in
   useEffect(() => {
-    if (profile && isAuthOpen) {
+    if (user && profile && isAuthOpen) {
+      console.log('✅ User logged in - closing auth modal');
       setIsAuthOpen(false);
     }
-  }, [profile, isAuthOpen]);
+  }, [user, profile, isAuthOpen]);
+
+  // Force refresh auth state after OAuth callback
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('access_token')) {
+      // After OAuth callback, give it a moment then check if we need to refresh
+      const timer = setTimeout(() => {
+        // If we still don't have a user after OAuth callback, something went wrong
+        // But don't do anything aggressive - just log it
+        if (!user) {
+          console.warn('⚠️ OAuth callback detected but no user found - session may not have been processed');
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   const [analysis, setAnalysis] = useState<AnalysisState>({
     isLoading: false,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, KeyRound, Loader2, Gift, CheckCircle2, Copy, Share2 } from 'lucide-react';
+import { X, Mail, KeyRound, Loader2, Gift, CheckCircle2, Copy, Share2, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth, REFERRAL_BONUS_CREDITS, FREE_SIGNUP_CREDITS } from '../contexts/AuthContext';
 
 interface AuthModalProps {
@@ -7,18 +7,34 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type AuthStep = 'email' | 'otp' | 'referral' | 'success';
+type AuthMode = 'login' | 'signup' | 'forgot-password' | 'reset-password';
+type AuthStep = 'email' | 'otp' | 'password' | 'referral' | 'success';
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { sendOTP, verifyOTP, profile, applyReferralCode, isConfigured } = useAuth();
+  const { 
+    sendOTP, 
+    verifyOTP, 
+    setPasswordAfterOTP,
+    signInWithPassword, 
+    resetPassword, 
+    updatePassword,
+    profile, 
+    applyReferralCode, 
+    isConfigured 
+  } = useAuth();
   
+  const [mode, setMode] = useState<AuthMode>('login'); // 'login' | 'signup' | 'forgot-password'
   const [step, setStep] = useState<AuthStep>('email');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!isOpen) return null;
 
@@ -26,6 +42,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  const validatePassword = (password: string) => {
+    return password.length >= 6;
+  };
+
+  // Handle login with password
+  const handleLogin = async () => {
+    if (!email || !validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = await signInWithPassword(email, password);
+    
+    setLoading(false);
+    
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.error || 'Invalid email or password');
+    }
+  };
+
+  // Handle signup: send OTP
   const handleSendOTP = async () => {
     if (!email || !validateEmail(email)) {
       setError('Please enter a valid email address');
@@ -42,10 +89,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     if (result.success) {
       setStep('otp');
     } else {
-      setError(result.error || 'Failed to send OTP');
+      setError(result.error || 'Failed to send verification code');
     }
   };
 
+  // Verify OTP (for signup)
   const handleVerifyOTP = async () => {
     if (!otp || otp.trim().length < 6) {
       setError('Please enter the verification code from your email');
@@ -58,11 +106,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     // Extract token from link if user pasted a full URL
     let token = otp.trim();
     if (token.includes('token=')) {
-      // User pasted the full confirmation link - extract token
       const urlParams = new URLSearchParams(token.split('?')[1] || '');
       token = urlParams.get('token') || token;
     } else if (token.includes('http')) {
-      // Full URL - try to extract token
       try {
         const url = new URL(token);
         token = url.searchParams.get('token') || token.split('token=')[1]?.split('&')[0] || token;
@@ -76,12 +122,64 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setLoading(false);
     
     if (result.success) {
-      setStep('referral');
+      setStep('password'); // Next: set password
     } else {
-      setError(result.error || 'Invalid code. If you received a link, copy the token from the URL (the long code after "token=")');
+      setError(result.error || 'Invalid code. Please check your email and try again.');
     }
   };
 
+  // Set password after OTP verification
+  const handleSetPassword = async () => {
+    if (!password || !validatePassword(password)) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = await setPasswordAfterOTP(email, password);
+    
+    setLoading(false);
+    
+    if (result.success) {
+      setStep('referral'); // Next: optional referral code
+    } else {
+      setError(result.error || 'Failed to set password');
+    }
+  };
+
+  // Handle forgot password
+  const handleForgotPassword = async () => {
+    if (!email || !validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = await resetPassword(email);
+    
+    setLoading(false);
+    
+    if (result.success) {
+      setError('');
+      alert('Password reset link sent! Check your email and click the link to reset your password.');
+      setMode('login');
+      setStep('email');
+      setEmail('');
+    } else {
+      setError(result.error || 'Failed to send reset email');
+    }
+  };
+
+  // Handle referral code
   const handleApplyReferral = async () => {
     if (!referralCode) {
       // Skip referral, go to success
@@ -133,12 +231,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleClose = () => {
+    setMode('login');
     setStep('email');
     setEmail('');
+    setPassword('');
+    setConfirmPassword('');
     setOtp('');
     setReferralCode('');
     setError('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     onClose();
+  };
+
+  const switchToSignup = () => {
+    setMode('signup');
+    setStep('email');
+    setError('');
+  };
+
+  const switchToLogin = () => {
+    setMode('login');
+    setStep('email');
+    setError('');
   };
 
   if (!isConfigured) {
@@ -170,23 +285,32 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </button>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              {step === 'email' && <Mail size={24} />}
-              {step === 'otp' && <KeyRound size={24} />}
-              {step === 'referral' && <Gift size={24} />}
-              {step === 'success' && <CheckCircle2 size={24} />}
+              {mode === 'login' && <KeyRound size={24} />}
+              {mode === 'signup' && step === 'email' && <Mail size={24} />}
+              {mode === 'signup' && step === 'otp' && <KeyRound size={24} />}
+              {mode === 'signup' && step === 'password' && <Lock size={24} />}
+              {mode === 'signup' && step === 'referral' && <Gift size={24} />}
+              {mode === 'signup' && step === 'success' && <CheckCircle2 size={24} />}
+              {mode === 'forgot-password' && <Mail size={24} />}
             </div>
             <div>
               <h3 className="text-lg font-bold">
-                {step === 'email' && 'Login / Sign Up'}
-                {step === 'otp' && 'Check Your Email'}
-                {step === 'referral' && 'Referral Code'}
-                {step === 'success' && 'Welcome!'}
+                {mode === 'login' && 'Login'}
+                {mode === 'signup' && step === 'email' && 'Sign Up'}
+                {mode === 'signup' && step === 'otp' && 'Verify Email'}
+                {mode === 'signup' && step === 'password' && 'Set Password'}
+                {mode === 'signup' && step === 'referral' && 'Referral Code'}
+                {mode === 'signup' && step === 'success' && 'Welcome!'}
+                {mode === 'forgot-password' && 'Reset Password'}
               </h3>
               <p className="text-white/70 text-sm">
-                {step === 'email' && 'Enter your email address'}
-                {step === 'otp' && 'We sent a code to your email'}
-                {step === 'referral' && 'Have a friend\'s code?'}
-                {step === 'success' && 'You\'re all set'}
+                {mode === 'login' && 'Enter your email and password'}
+                {mode === 'signup' && step === 'email' && 'Create your account'}
+                {mode === 'signup' && step === 'otp' && 'Check your email'}
+                {mode === 'signup' && step === 'password' && 'Choose a secure password'}
+                {mode === 'signup' && step === 'referral' && 'Have a friend\'s code?'}
+                {mode === 'signup' && step === 'success' && 'You\'re all set'}
+                {mode === 'forgot-password' && 'We\'ll send you a reset link'}
               </p>
             </div>
           </div>
@@ -195,8 +319,83 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Body */}
         <div className="p-6">
           
-          {/* Step 1: Email */}
-          {step === 'email' && (
+          {/* LOGIN MODE */}
+          {mode === 'login' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleLogin}
+                disabled={loading || !validateEmail(email) || !password}
+                className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 size={20} className="animate-spin" /> Logging in...</>
+                ) : (
+                  <>Login <KeyRound size={18} /></>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  onClick={() => { setMode('forgot-password'); setStep('email'); setError(''); }}
+                  className="text-brand-600 hover:text-brand-700 font-medium"
+                >
+                  Forgot password?
+                </button>
+                <button
+                  onClick={switchToSignup}
+                  className="text-slate-600 hover:text-slate-700"
+                >
+                  Don't have an account? <span className="font-medium text-brand-600">Sign up</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SIGNUP MODE - Step 1: Email */}
+          {mode === 'signup' && step === 'email' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -226,18 +425,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 {loading ? (
                   <><Loader2 size={20} className="animate-spin" /> Sending...</>
                 ) : (
-                  <>Send Code <Mail size={18} /></>
+                  <>Send Verification Code <Mail size={18} /></>
                 )}
               </button>
 
               <p className="text-xs text-slate-500 text-center">
-                We'll send a 6-digit code to verify your email. No password needed!
+                We'll send a verification code to your email
               </p>
+
+              <button
+                onClick={switchToLogin}
+                className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm"
+              >
+                Already have an account? <span className="font-medium text-brand-600">Login</span>
+              </button>
             </div>
           )}
 
-          {/* Step 2: OTP Verification */}
-          {step === 'otp' && (
+          {/* SIGNUP MODE - Step 2: OTP */}
+          {mode === 'signup' && step === 'otp' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -255,9 +461,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
               <p className="text-sm text-slate-500 text-center">
                 Check your inbox: <span className="font-medium text-slate-700">{email}</span>
-              </p>
-              <p className="text-xs text-slate-400 text-center">
-                Copy the code from the email and paste it here
               </p>
 
               {error && (
@@ -287,14 +490,83 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 3: Referral Code (Optional) */}
-          {step === 'referral' && (
+          {/* SIGNUP MODE - Step 3: Set Password */}
+          {mode === 'signup' && step === 'password' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Create Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSetPassword()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSetPassword()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleSetPassword}
+                disabled={loading || !validatePassword(password) || password !== confirmPassword}
+                className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 size={20} className="animate-spin" /> Setting password...</>
+                ) : (
+                  <>Continue <Lock size={18} /></>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* SIGNUP MODE - Step 4: Referral Code (Optional) */}
+          {mode === 'signup' && step === 'referral' && (
             <div className="space-y-4">
               <div className="text-center mb-4">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <CheckCircle2 size={32} className="text-green-600" />
                 </div>
-                <p className="text-green-600 font-medium">Email verified!</p>
+                <p className="text-green-600 font-medium">Account created!</p>
                 <p className="text-slate-500 text-sm">You received {FREE_SIGNUP_CREDITS} free credits</p>
               </div>
 
@@ -344,8 +616,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 4: Success */}
-          {step === 'success' && (
+          {/* SIGNUP MODE - Step 5: Success */}
+          {mode === 'signup' && step === 'success' && (
             <div className="space-y-4 text-center">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 size={40} className="text-green-600" />
@@ -389,6 +661,50 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl transition-colors"
               >
                 Start Analyzing
+              </button>
+            </div>
+          )}
+
+          {/* FORGOT PASSWORD MODE */}
+          {mode === 'forgot-password' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-lg"
+                  onKeyDown={(e) => e.key === 'Enter' && handleForgotPassword()}
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleForgotPassword}
+                disabled={loading || !validateEmail(email)}
+                className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 size={20} className="animate-spin" /> Sending...</>
+                ) : (
+                  <>Send Reset Link <Mail size={18} /></>
+                )}
+              </button>
+
+              <button
+                onClick={switchToLogin}
+                className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm"
+              >
+                ← Back to login
               </button>
             </div>
           )}

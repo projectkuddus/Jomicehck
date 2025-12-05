@@ -20,9 +20,15 @@ interface AuthContextType {
   loading: boolean;
   isConfigured: boolean;
   
-  // Auth methods
+  // Auth methods - OTP for initial signup only
   sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
   verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  setPasswordAfterOTP: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  
+  // Password-based auth (main login method)
+  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   
   // Credit methods
@@ -223,7 +229,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Note: Profile refresh is now handled in the main useEffect above
 
-  // Send OTP code to email (token, not magic link)
+  // Send OTP code to email (for initial signup verification only)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
@@ -234,8 +240,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: email.toLowerCase().trim(),
         options: {
           shouldCreateUser: true,
-          // Force OTP token instead of magic link
-          emailRedirectTo: null,
+          emailRedirectTo: undefined,
         },
       });
 
@@ -249,7 +254,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Verify OTP
+  // Verify OTP (for initial signup - then user sets password)
   const verifyOTP = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
@@ -266,9 +271,139 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: error.message };
       }
 
+      // After OTP verification, user is logged in temporarily
+      // They need to set a password next
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to verify OTP' };
+    }
+  };
+
+  // Set password after OTP verification (for new users)
+  const setPasswordAfterOTP = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isConfigured) {
+      return { success: false, error: 'Auth not configured' };
+    }
+
+    if (!password || password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' };
+    }
+
+    try {
+      // Update the user's password
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to set password' };
+    }
+  };
+
+  // Sign up with email and password (alternative method)
+  const signUpWithPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isConfigured) {
+      return { success: false, error: 'Auth not configured' };
+    }
+
+    if (!password || password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase().trim(),
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // If email confirmation is required, user needs to verify
+      if (data.user && !data.session) {
+        return { success: true, error: 'Please check your email to confirm your account' };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to sign up' };
+    }
+  };
+
+  // Sign in with email and password
+  const signInWithPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isConfigured) {
+      return { success: false, error: 'Auth not configured' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password: password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to sign in' };
+    }
+  };
+
+  // Send password reset email
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isConfigured) {
+      return { success: false, error: 'Auth not configured' };
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send reset email' };
+    }
+  };
+
+  // Update password (for logged-in users or after reset)
+  const updatePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isConfigured) {
+      return { success: false, error: 'Auth not configured' };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' };
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update password' };
     }
   };
 
@@ -444,6 +579,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isConfigured,
       sendOTP,
       verifyOTP,
+      setPasswordAfterOTP,
+      signInWithPassword,
+      resetPassword,
+      updatePassword,
       signOut,
       addCredits,
       useCredits,

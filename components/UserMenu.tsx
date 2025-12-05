@@ -7,7 +7,7 @@ interface UserMenuProps {
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
-  const { user, profile, signOut, isConfigured } = useAuth();
+  const { user, profile, signOut, isConfigured, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -55,8 +55,18 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     setIsOpen(false);
   };
 
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl">
+        <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-600 rounded-full animate-spin"></div>
+        <span className="hidden sm:inline text-sm text-slate-600">Loading...</span>
+      </div>
+    );
+  }
+
   // Not configured or not logged in - show login button
-  if (!isConfigured || !user || !profile) {
+  if (!isConfigured || !user) {
     return (
       <button
         onClick={onOpenAuth}
@@ -65,6 +75,20 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
         <User size={18} />
         <span className="hidden sm:inline">Login</span>
       </button>
+    );
+  }
+
+  // User is logged in but profile is still loading - show basic user info
+  if (!profile) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl">
+        <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-sm uppercase">
+          {user.email?.charAt(0) || 'U'}
+        </div>
+        <div className="hidden sm:block text-left">
+          <div className="text-sm font-semibold text-slate-700">Loading...</div>
+        </div>
+      </div>
     );
   }
 

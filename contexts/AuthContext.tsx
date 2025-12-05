@@ -145,6 +145,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => subscription.unsubscribe();
   }, [isConfigured]);
 
+  // Refresh profile when user changes (fallback)
+  useEffect(() => {
+    if (user && !profile && !loading) {
+      fetchProfile(user.id, user.email).then(setProfile);
+    }
+  }, [user]);
+
   // Send OTP code to email (6-digit code, not magic link)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {

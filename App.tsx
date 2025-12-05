@@ -15,6 +15,7 @@ import ChatInterface from './components/ChatInterface';
 import HistorySidebar from './components/HistorySidebar';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
+import AuthDebug from './components/AuthDebug';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import { analyzeDocuments } from './services/geminiService';
@@ -595,6 +596,9 @@ const AppContent: React.FC = () => {
       {currentPage !== 'home' && (
         <Footer onNavigate={setCurrentPage} />
       )}
+
+      {/* Debug Component (only in development) */}
+      {!import.meta.env.PROD && <AuthDebug />}
     </div>
   );
 };

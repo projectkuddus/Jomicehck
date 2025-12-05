@@ -42,8 +42,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      // Get the full redirect URL including hash
+      // Debug: Check Supabase config
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      console.log('🔍 OAuth Debug:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey,
+        url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
+        isConfigured,
+      });
+
+      if (!isConfigured) {
+        setError('Supabase not configured. Please check environment variables.');
+        setGoogleLoading(false);
+        return;
+      }
+
+      // Get the full redirect URL
       const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      console.log('🔍 Redirect URL:', redirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -56,20 +74,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         },
       });
 
+      console.log('🔍 OAuth Response:', { data, error });
+
       if (error) {
-        console.error('Google login error:', error);
+        console.error('❌ Google login error:', error);
         setError(error.message || 'Failed to connect to Google. Please check your browser settings.');
         setGoogleLoading(false);
       } else if (data?.url) {
+        console.log('✅ Redirecting to:', data.url);
         // Redirect should happen automatically, but if it doesn't, redirect manually
         window.location.href = data.url;
       } else {
-        // No error but no URL - might be a configuration issue
-        setError('OAuth configuration error. Please contact support.');
+        console.error('❌ No URL returned from OAuth');
+        setError('OAuth configuration error. No redirect URL received. Please check Supabase Google provider settings.');
         setGoogleLoading(false);
       }
     } catch (err: any) {
-      console.error('Google login exception:', err);
+      console.error('❌ Google login exception:', err);
       setError(err.message || 'Failed to sign in with Google');
       setGoogleLoading(false);
     }

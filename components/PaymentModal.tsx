@@ -76,6 +76,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         transactionId: transactionId || 'none',
       });
 
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -87,7 +91,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
           paymentMethod: method,
           transactionId: transactionId || undefined,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log('💳 Payment response status:', response.status);
 
@@ -136,7 +143,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       }
     } catch (err: any) {
       console.error('❌ Payment error:', err);
-      setError(err.message || 'Payment failed. Please try again or contact support.');
+      
+      let errorMessage = 'Payment failed. Please try again or contact support.';
+      if (err.name === 'AbortError') {
+        errorMessage = 'Payment request timed out. Please check your connection and try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setIsProcessing(false);
     }
   };

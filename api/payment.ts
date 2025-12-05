@@ -278,8 +278,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (profileError) {
         console.error('❌ Profile fetch error:', profileError);
         // Payment is already recorded, but credits couldn't be added
-        // Send email notification about this issue
-        await sendPaymentNotification({
+        // Send email notification about this issue (non-blocking)
+        sendPaymentNotification({
           paymentId: paymentData.id,
           userId,
           userEmail: 'unknown',
@@ -288,7 +288,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           transactionId: transactionId.trim(),
           status: 'completed',
           error: 'Failed to add credits - manual intervention needed',
-        });
+        }).catch(err => console.error('Email notification failed:', err));
         
         return res.status(500).json({ 
           success: false,
@@ -306,7 +306,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (creditError) {
         console.error('❌ Credit update error:', creditError);
         // Payment is already recorded, but credits couldn't be added
-        await sendPaymentNotification({
+        // Send email notification (non-blocking)
+        sendPaymentNotification({
           paymentId: paymentData.id,
           userId,
           userEmail: profile.email || 'unknown',
@@ -315,7 +316,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           transactionId: transactionId.trim(),
           status: 'completed',
           error: 'Failed to add credits - manual intervention needed',
-        });
+        }).catch(err => console.error('Email notification failed:', err));
         
         return res.status(500).json({ 
           success: false,
@@ -333,8 +334,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           description: `Purchased ${packageData.credits} credits via bKash (Transaction: ${transactionId.trim()})`,
         });
 
-      // Step 5: Send email notification to admin
-      await sendPaymentNotification({
+      console.log('✅ Payment auto-approved and credits added:', {
+        paymentId: paymentData.id,
+        userId,
+        creditsAdded: packageData.credits,
+        newTotalCredits: newCredits,
+      });
+
+      // Step 5: Send email notification to admin (non-blocking - don't wait for it)
+      sendPaymentNotification({
         paymentId: paymentData.id,
         userId,
         userEmail: profile.email || 'unknown',
@@ -342,13 +350,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         credits: packageData.credits,
         transactionId: transactionId.trim(),
         status: 'completed',
-      });
-
-      console.log('✅ Payment auto-approved and credits added:', {
-        paymentId: paymentData.id,
-        userId,
-        creditsAdded: packageData.credits,
-        newTotalCredits: newCredits,
+      }).catch(err => {
+        console.error('❌ Email notification failed (non-critical):', err);
       });
 
       return res.status(200).json({

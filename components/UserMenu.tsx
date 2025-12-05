@@ -50,18 +50,15 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     setIsOpen(false);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setIsOpen(false);
-      // Force page reload to clear any cached state
-      window.location.reload();
-    } catch (err) {
-      console.error('Sign out failed:', err);
-      // Still try to close menu and reload
-      setIsOpen(false);
-      window.location.reload();
-    }
+  const handleSignOut = () => {
+    // Close menu immediately
+    setIsOpen(false);
+    
+    // Sign out (don't await - just fire and reload)
+    signOut().finally(() => {
+      // Force reload to clear all state
+      window.location.href = '/';
+    });
   };
 
   // Simple loading state - show briefly, max 2 seconds
@@ -163,8 +160,12 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
           {/* Actions */}
           <div className="p-2">
             <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSignOut();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm cursor-pointer"
             >
               <LogOut size={16} />
               Sign Out

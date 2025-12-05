@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, CreditCard, Gift, Copy, CheckCircle2, Share2, ChevronDown } from 'lucide-react';
+import { User, LogOut, CreditCard, Gift, Copy, CheckCircle2, Share2, ChevronDown, MessageSquare } from 'lucide-react';
 import { useAuth, REFERRAL_BONUS_CREDITS } from '../contexts/AuthContext';
 
 interface UserMenuProps {
   onOpenAuth: () => void;
   onBuyCredits?: () => void;
+  onNavigate?: (page: 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy') => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits, onNavigate }) => {
   const { user, profile, signOut, isConfigured, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -186,6 +187,20 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth, onBuyCredits }) => {
               >
                 <CreditCard size={16} />
                 Buy More Credits
+              </button>
+            )}
+            {onNavigate && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onNavigate('support');
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-sm"
+              >
+                <MessageSquare size={16} />
+                Send Feedback
               </button>
             )}
             <button

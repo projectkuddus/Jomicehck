@@ -118,12 +118,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         throw new Error(data.error || 'Payment failed');
       }
 
-      // All payments are manual verification
-      if (data.status === 'pending_verification' || data.success) {
+      // Auto-approved payments
+      if (data.status === 'completed' || data.success) {
         setError(null);
         // Show success message
-        alert(`✅ Payment submitted successfully!\n\nYour ${data.credits} credits will be added after admin verification (usually within 24 hours).\n\nPayment ID: ${data.paymentId}\n\nYou can check your payment status in the admin panel.`);
-        // Refresh profile
+        alert(`✅ Payment Approved!\n\n${data.credits} credits have been added to your account instantly!\n\nYour new balance: ${data.totalCredits || data.credits} credits\n\nTransaction ID: ${transactionId}\n\nYou can start using your credits right away!`);
+        // Refresh profile to get updated credits
         try {
           await refreshProfile();
         } catch (err) {
@@ -269,8 +269,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   placeholder="Enter bKash transaction ID"
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono text-center text-base sm:text-lg"
                 />
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-2 text-center">
-                  ⏳ After submission, admin will verify and add credits within 24 hours
+                <p className="text-[10px] sm:text-xs text-green-600 mt-2 text-center font-semibold">
+                  ⚡ Credits are added instantly after submission!
                 </p>
               </div>
           </div>
@@ -300,9 +300,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
             )}
           </button>
           
-          <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400">
-            <Lock size={10} className="sm:w-3 sm:h-3" />
-            <span>Manual verification - Credits added after admin approval</span>
+          <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4 text-[10px] sm:text-xs text-green-600">
+            <CheckCircle size={10} className="sm:w-3 sm:h-3" />
+            <span>Auto-approved - Credits added instantly!</span>
           </div>
         </div>
       </div>

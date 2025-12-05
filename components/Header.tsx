@@ -7,6 +7,7 @@ interface HeaderProps {
   onNavigate: (page: 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy') => void;
   onToggleHistory: () => void;
   onOpenAuth: () => void;
+  onBuyCredits: () => void;
   currentPage: string;
 }
 
@@ -78,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
           )}
 
           {/* User Menu */}
-          <UserMenu onOpenAuth={onOpenAuth} onBuyCredits={onBuyCredits} />
+          <UserMenu onOpenAuth={onOpenAuth} onBuyCredits={onBuyCredits} onNavigate={onNavigate} />
           
           {/* Mobile Menu Button */}
           <button 

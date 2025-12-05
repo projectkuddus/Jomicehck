@@ -135,6 +135,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
+      // Handle SIGNED_OUT event explicitly
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -251,22 +260,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Sign out - completely clear all state
+  // Sign out - completely clear all state and storage
   const signOut = async () => {
-    // Clear local state FIRST
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-    
-    // Then sign out from Supabase
     try {
+      // Sign out from Supabase first (this clears Supabase session)
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Sign out error:', err);
     }
     
-    // Clear any cached data
-    localStorage.removeItem('sb-' + (supabaseUrl?.split('//')[1]?.split('.')[0] || 'supabase') + '-auth-token');
+    // Clear local React state
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    
+    // Clear ALL Supabase-related localStorage items
+    // Supabase stores session in keys like: sb-{project-ref}-auth-token
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (supabaseUrl) {
+      try {
+        // Extract project ref from URL (e.g., tyiuowhrdnaoxqrxpfbd from https://tyiuowhrdnaoxqrxpfbd.supabase.co)
+        const projectRef = supabaseUrl.split('//')[1]?.split('.')[0];
+        if (projectRef) {
+          // Clear the main auth token
+          localStorage.removeItem(`sb-${projectRef}-auth-token`);
+        }
+        
+        // Clear all keys that start with 'sb-' (Supabase storage)
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      } catch (err) {
+        console.error('Error clearing localStorage:', err);
+      }
+    }
+    
+    // Clear sessionStorage as well
+    try {
+      sessionStorage.clear();
+    } catch (err) {
+      console.error('Error clearing sessionStorage:', err);
+    }
   };
 
   // Add credits to user account

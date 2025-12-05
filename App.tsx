@@ -387,12 +387,14 @@ const AppContent: React.FC = () => {
           const refundSuccess = await addCredits(creditsUsed);
           if (refundSuccess) {
             console.log('✅ Credits refunded successfully');
-            // Refresh profile to show updated credits
+            // CRITICAL: Force refresh profile to sync state with database
             if (refreshProfile) {
               await refreshProfile();
+              // Wait a moment for state to update
+              await new Promise(resolve => setTimeout(resolve, 200));
             }
           } else {
-            console.error('❌ Failed to refund credits');
+            console.error('❌ Failed to refund credits - manual intervention may be needed');
           }
         } catch (refundErr: any) {
           console.error('❌ Credit refund error:', refundErr);

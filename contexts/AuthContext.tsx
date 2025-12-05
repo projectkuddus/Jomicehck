@@ -46,14 +46,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const isConfigured = isSupabaseConfigured();
 
-  // Generate referral code
-  const generateReferralCode = () => {
+  // Generate referral code - FIXED: Ensure uniqueness
+  const generateReferralCode = async (): Promise<string> => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'JOMI';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      let code = 'JOMI';
+      for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      // Check if code already exists
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('referral_code', code)
+        .single();
+      
+      if (!existing) {
+        console.log('✅ Generated unique referral code:', code);
+        return code;
+      }
+      
+      attempts++;
+      console.warn(`⚠️ Referral code ${code} already exists, trying again...`);
     }
-    return code;
+    
+    // Fallback: Use timestamp if all attempts fail
+    const fallbackCode = `JOMI${Date.now().toString(36).toUpperCase().slice(-4)}`;
+    console.warn('⚠️ Using fallback referral code:', fallbackCode);
+    return fallbackCode;
   };
 
   // Fetch or create profile
@@ -71,11 +95,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Create new profile if doesn't exist
       if (fetchError && fetchError.code === 'PGRST116') {
+        // Generate unique referral code
+        const referralCode = await generateReferralCode();
+        
         const newProfile = {
           id: userId,
           email: userEmail || '',
           credits: FREE_SIGNUP_CREDITS,
-          referral_code: generateReferralCode(),
+          referral_code: referralCode,
           total_referrals: 0,
         };
 
@@ -241,21 +268,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e) {}
   };
 
-  // Add credits
+  // Add credits - FIXED: Re-check from database to prevent race conditions
   const addCredits = async (amount: number): Promise<boolean> => {
-    if (!profile) return false;
+    if (!user || !profile) return false;
 
     try {
-      const { error } = await supabase
+      // CRITICAL FIX: Re-fetch profile from database to get latest credits
+      // This prevents race conditions where credits were deducted but local state is stale
+      const { data: currentProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({ credits: profile.credits + amount })
-        .eq('id', profile.id);
+        .select('credits')
+        .eq('id', user.id)
+        .single();
 
-      if (error) return false;
+      if (fetchError || !currentProfile) {
+        console.error('❌ Failed to fetch current credits for refund:', fetchError);
+        return false;
+      }
 
-      setProfile({ ...profile, credits: profile.credits + amount });
+      const currentCredits = currentProfile.credits || 0;
+      const newCredits = currentCredits + amount;
+
+      // Add credits using database value, not local state
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ credits: newCredits })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('❌ Failed to add credits:', updateError);
+        return false;
+      }
+
+      // Update local state with actual database value
+      setProfile({ ...profile, credits: newCredits });
+      console.log('✅ Credits added:', { amount, oldCredits: currentCredits, newCredits });
       return true;
-    } catch {
+    } catch (error: any) {
+      console.error('❌ Credit addition error:', error);
       return false;
     }
   };
@@ -310,58 +360,103 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Apply referral code
+  // Apply referral code - FIXED: Use database-first approach and proper tracking
   const applyReferralCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
-    if (!profile) return { success: false, error: 'Not logged in' };
-    if (profile.referred_by) return { success: false, error: 'Already used a referral code' };
+    if (!user || !profile) return { success: false, error: 'Not logged in' };
+    
+    // Re-fetch profile to check current state
+    const { data: currentProfile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('referred_by, credits')
+      .eq('id', user.id)
+      .single();
+    
+    if (fetchError || !currentProfile) {
+      return { success: false, error: 'Failed to verify account status' };
+    }
+    
+    if (currentProfile.referred_by) {
+      return { success: false, error: 'Already used a referral code' };
+    }
 
     try {
+      // Find referrer by code
       const { data: referrer, error: findError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('referral_code', code.toUpperCase())
+        .eq('referral_code', code.toUpperCase().trim())
         .single();
 
-      if (findError || !referrer) return { success: false, error: 'Invalid referral code' };
-      if (referrer.id === profile.id) return { success: false, error: 'Cannot use your own code' };
+      if (findError || !referrer) {
+        return { success: false, error: 'Invalid referral code' };
+      }
+      
+      if (referrer.id === user.id) {
+        return { success: false, error: 'Cannot use your own code' };
+      }
 
-      // Update user
+      // CRITICAL: Use database values, not local state
+      const userCurrentCredits = currentProfile.credits || 0;
+      const referrerCurrentCredits = referrer.credits || 0;
+      const referrerCurrentTotal = referrer.total_referrals || 0;
+
+      // Update user (new user gets bonus)
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           referred_by: referrer.id,
-          credits: profile.credits + REFERRAL_BONUS_CREDITS,
+          credits: userCurrentCredits + REFERRAL_BONUS_CREDITS,
         })
-        .eq('id', profile.id);
+        .eq('id', user.id);
 
-      if (updateError) return { success: false, error: 'Failed to apply code' };
+      if (updateError) {
+        console.error('❌ Failed to apply referral code to user:', updateError);
+        return { success: false, error: 'Failed to apply code' };
+      }
 
-      // Update referrer
-      await supabase
+      // Update referrer (referrer gets bonus and count increases)
+      const { error: referrerUpdateError } = await supabase
         .from('profiles')
         .update({
-          credits: referrer.credits + REFERRAL_BONUS_CREDITS,
-          total_referrals: referrer.total_referrals + 1,
+          credits: referrerCurrentCredits + REFERRAL_BONUS_CREDITS,
+          total_referrals: referrerCurrentTotal + 1,
         })
         .eq('id', referrer.id);
 
-      setProfile({
-        ...profile,
-        referred_by: referrer.id,
-        credits: profile.credits + REFERRAL_BONUS_CREDITS,
+      if (referrerUpdateError) {
+        console.error('❌ Failed to update referrer:', referrerUpdateError);
+        // User was already updated, so we should still return success
+        // But log the error for admin review
+      }
+
+      // Refresh profile to get updated values
+      await refreshProfile();
+
+      console.log('✅ Referral code applied:', {
+        code: code.toUpperCase(),
+        userCredits: userCurrentCredits + REFERRAL_BONUS_CREDITS,
+        referrerCredits: referrerCurrentCredits + REFERRAL_BONUS_CREDITS,
+        referrerTotal: referrerCurrentTotal + 1,
       });
 
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed' };
+      console.error('❌ Referral code application error:', err);
+      return { success: false, error: err.message || 'Failed to apply referral code' };
     }
   };
 
-  // Refresh profile
+  // Refresh profile - FIXED: Force refresh to sync with database
   const refreshProfile = async () => {
     if (user) {
+      console.log('🔄 Refreshing profile from database...');
       const profileData = await fetchProfile(user.id, user.email);
-      setProfile(profileData);
+      if (profileData) {
+        setProfile(profileData);
+        console.log('✅ Profile refreshed - Credits:', profileData.credits);
+      } else {
+        console.error('❌ Failed to refresh profile');
+      }
     }
   };
 

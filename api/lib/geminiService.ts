@@ -173,22 +173,23 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
     });
 
     console.log('✅ Gemini API response received');
-    console.log('📋 Response type:', typeof response);
-    console.log('📋 Response keys:', Object.keys(response || {}));
     
-    // Handle different response structures
+    // @google/genai returns response.text directly
     let text: string;
     try {
-      if (typeof response === 'string') {
+      // The response should have a .text property
+      if (response && typeof response === 'object' && 'text' in response) {
+        text = (response as any).text;
+      } else if (typeof response === 'string') {
         text = response;
-      } else if (response && typeof response === 'object') {
-        // Try different possible response structures
-        text = (response as any).text || 
-               (response as any).response?.text || 
-               (response as any).candidates?.[0]?.content?.parts?.[0]?.text ||
-               JSON.stringify(response);
       } else {
-        throw new Error('Unexpected response type from AI service');
+        // Log the actual response structure for debugging
+        console.error('❌ Unexpected response structure:', {
+          type: typeof response,
+          keys: response ? Object.keys(response) : 'null',
+          response: JSON.stringify(response).substring(0, 500)
+        });
+        throw new Error('Unexpected response format from AI service');
       }
       
       if (!text || text.trim() === '' || text.trim() === '{}') {
@@ -200,7 +201,7 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
       
     } catch (parseError: any) {
       console.error('❌ Response parsing error:', parseError);
-      console.error('❌ Full response:', JSON.stringify(response, null, 2).substring(0, 1000));
+      console.error('❌ Response object:', response);
       throw new Error('Failed to parse AI service response. Please try again.');
     }
     
@@ -208,6 +209,12 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
     let jsonResult: AnalysisResult;
     try {
       jsonResult = JSON.parse(text) as AnalysisResult;
+      
+      // Validate required fields
+      if (!jsonResult.riskScore || !jsonResult.riskLevel || !jsonResult.documentType) {
+        throw new Error('Invalid response structure: missing required fields');
+      }
+      
     } catch (jsonError: any) {
       console.error('❌ JSON parse error:', jsonError);
       console.error('❌ Response text (first 500 chars):', text.substring(0, 500));

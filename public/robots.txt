@@ -1,0 +1,25 @@
+# JomiCheck Robots.txt
+# https://www.jomicheck.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://www.jomicheck.com/sitemap.xml
+
+# Block API endpoints from indexing
+Disallow: /api/
+
+# Allow all major crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+

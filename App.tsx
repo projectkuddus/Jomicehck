@@ -591,10 +591,10 @@ const AppContent: React.FC = () => {
                     {/* Main Action Button */}
                     <button
                       onClick={handleStartAnalysis}
-                      disabled={analysis.isLoading}
+                      disabled={analysis.isLoading || priceCalculation.isLoading}
                       className={`
                         w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg transition-all
-                        ${analysis.isLoading 
+                        ${analysis.isLoading || priceCalculation.isLoading
                           ? 'bg-slate-400 cursor-not-allowed' 
                           : priceCalculation.needsLogin
                             ? 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20'
@@ -606,6 +606,8 @@ const AppContent: React.FC = () => {
                     >
                       {analysis.isLoading ? (
                         <span className="flex items-center gap-2">Processing...</span>
+                      ) : priceCalculation.isLoading ? (
+                        <span className="flex items-center gap-2">Loading profile...</span>
                       ) : priceCalculation.needsLogin ? (
                         <>
                           <LogIn size={20} /> Login to Analyze

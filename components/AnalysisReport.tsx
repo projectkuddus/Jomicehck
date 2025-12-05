@@ -54,7 +54,7 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
         </div>
         <button 
              onClick={() => window.print()}
-             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm transition-colors"
+             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm transition-colors no-print"
            >
              <Printer size={16} />
              <span className="hidden sm:inline">Download PDF</span>

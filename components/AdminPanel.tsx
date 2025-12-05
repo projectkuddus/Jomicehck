@@ -26,6 +26,12 @@ interface UserProfile {
   referral_code: string;
   total_referrals: number;
   created_at: string;
+  payment_info?: {
+    totalPaid: number;
+    totalPayments: number;
+    lastPayment?: string;
+    transactionIds: string[];
+  };
 }
 
 interface PaymentTransaction {
@@ -99,18 +105,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
       if (usersError) throw usersError;
 
-      setUsers(usersData || []);
-
       // Fetch payment transactions
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payment_transactions')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
+      // Get user emails for payments
+      let paymentsWithEmails: PaymentTransaction[] = [];
       if (!paymentsError && paymentsData) {
-        // Get user emails for payments
-        const paymentsWithEmails = await Promise.all(
+        paymentsWithEmails = await Promise.all(
           paymentsData.map(async (payment) => {
             const { data: profile } = await supabase
               .from('profiles')
@@ -120,8 +124,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             return { ...payment, user_email: profile?.email || 'Unknown' };
           })
         );
-        setPayments(paymentsWithEmails);
       }
+
+      // Add payment info to each user
+      const usersWithPayments = (usersData || []).map(user => {
+        const userPayments = paymentsWithEmails.filter(p => p.user_id === user.id && p.status === 'completed');
+        const totalPaid = userPayments.reduce((sum, p) => sum + p.amount, 0);
+        const transactionIds = userPayments.map(p => p.transaction_id).filter(Boolean) as string[];
+        const lastPayment = userPayments.length > 0 ? userPayments[0].created_at : undefined;
+
+        return {
+          ...user,
+          payment_info: {
+            totalPaid,
+            totalPayments: userPayments.length,
+            lastPayment,
+            transactionIds
+          }
+        };
+      });
+
+      setUsers(usersWithPayments);
+
+      // Set payments for Payments tab (limit to 100 for display)
+      setPayments(paymentsWithEmails.slice(0, 100));
 
       // Calculate stats
       const now = new Date();
@@ -565,6 +591,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       )}
                     </span>
                   </th>
+                  <th className="px-6 py-3 text-left font-semibold">Payment Status</th>
+                  <th className="px-6 py-3 text-left font-semibold">Transaction IDs</th>
                   <th className="px-6 py-3 text-left font-semibold">Referral Code</th>
                   <th className="px-6 py-3 text-left font-semibold">Referrals</th>
                   <th 
@@ -611,6 +639,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
+                      {user.payment_info && user.payment_info.totalPayments > 0 ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle size={14} className="text-green-600" />
+                            <span className="text-xs font-semibold text-green-700">
+                              Paid: ৳{user.payment_info.totalPaid}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {user.payment_info.totalPayments} payment{user.payment_info.totalPayments > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle size={14} className="text-red-500" />
+                          <span className="text-xs text-red-600 font-medium">No payments</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.payment_info && user.payment_info.transactionIds.length > 0 ? (
+                        <div className="space-y-1 max-w-xs">
+                          {user.payment_info.transactionIds.slice(0, 2).map((txId, idx) => (
+                            <code key={idx} className="block text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate" title={txId}>
+                              {txId}
+                            </code>
+                          ))}
+                          {user.payment_info.transactionIds.length > 2 && (
+                            <span className="text-xs text-slate-500">
+                              +{user.payment_info.transactionIds.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono">
                         {user.referral_code}
                       </code>
@@ -630,7 +696,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                       {loading ? 'Loading...' : 'No users yet'}
                     </td>
                   </tr>

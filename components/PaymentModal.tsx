@@ -229,20 +229,36 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
 
           {/* Transaction ID Input for bKash/Nagad */}
           {(showTransactionInput && (method === 'bkash' || method === 'nagad')) && (
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Transaction ID ({method === 'bkash' ? 'bKash' : 'Nagad'})
-              </label>
-              <input
-                type="text"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                placeholder={`Enter your ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Send ৳{currentPackage.price} to our {method === 'bkash' ? 'bKash' : 'Nagad'} number, then enter the transaction ID here.
-              </p>
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-blue-900 mb-2">Payment Instructions:</p>
+                <div className="bg-white p-3 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800 mb-2">
+                    <strong>Step 1:</strong> Send <strong>৳{currentPackage.price}</strong> to:
+                  </p>
+                  <p className="text-lg font-bold text-blue-900 mb-1">
+                    {method === 'bkash' ? 'bKash: 01XXXXXXXXX' : 'Nagad: 01XXXXXXXXX'}
+                  </p>
+                  <p className="text-xs text-blue-600 italic">
+                    (Update this number in your admin panel or contact support)
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Transaction ID ({method === 'bkash' ? 'bKash' : 'Nagad'})
+                </label>
+                <input
+                  type="text"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  placeholder={`Enter your ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  <strong>Step 2:</strong> After sending payment, enter the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app.
+                </p>
+              </div>
             </div>
           )}
 

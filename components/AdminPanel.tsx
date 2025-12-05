@@ -13,7 +13,10 @@ import {
   ChevronUp,
   AlertCircle,
   CheckCircle2,
-  X
+  X,
+  DollarSign,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 interface UserProfile {
@@ -23,6 +26,20 @@ interface UserProfile {
   referral_code: string;
   total_referrals: number;
   created_at: string;
+}
+
+interface PaymentTransaction {
+  id: string;
+  user_id: string;
+  package_id: string;
+  amount: number;
+  credits: number;
+  payment_method: string;
+  transaction_id: string | null;
+  status: 'pending' | 'completed' | 'failed';
+  verified_at: string | null;
+  created_at: string;
+  user_email?: string;
 }
 
 interface AdminStats {
@@ -44,6 +61,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [activeTab, setActiveTab] = useState<'users' | 'payments'>('users');
   const [sortField, setSortField] = useState<'created_at' | 'credits'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -78,6 +97,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
       setUsers(usersData || []);
 
+      // Fetch payment transactions
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (!paymentsError && paymentsData) {
+        // Get user emails for payments
+        const paymentsWithEmails = await Promise.all(
+          paymentsData.map(async (payment) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', payment.user_id)
+              .single();
+            return { ...payment, user_email: profile?.email || 'Unknown' };
+          })
+        );
+        setPayments(paymentsWithEmails);
+      }
+
       // Calculate stats
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -99,6 +140,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       setError(err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyPayment = async (paymentId: string) => {
+    try {
+      const response = await fetch('/api/payment-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, verified: true }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh data
+        await fetchData();
+        alert(`Payment verified! ${data.credits} credits added to user account.`);
+      } else {
+        alert('Failed to verify payment: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert('Error verifying payment: ' + err.message);
+    }
+  };
+
+  const rejectPayment = async (paymentId: string) => {
+    if (!confirm('Are you sure you want to reject this payment?')) return;
+
+    try {
+      const response = await fetch('/api/payment-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, verified: false }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success !== false) {
+        await fetchData();
+        alert('Payment rejected.');
+      }
+    } catch (err: any) {
+      alert('Error rejecting payment: ' + err.message);
     }
   };
 
@@ -203,6 +287,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 font-semibold text-sm transition-colors ${
+              activeTab === 'users'
+                ? 'text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Users size={16} className="inline mr-2" />
+            Users ({users.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`px-4 py-2 font-semibold text-sm transition-colors relative ${
+              activeTab === 'payments'
+                ? 'text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <DollarSign size={16} className="inline mr-2" />
+            Payments ({payments.filter(p => p.status === 'pending').length} pending)
+            {payments.filter(p => p.status === 'pending').length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {payments.filter(p => p.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -240,7 +355,114 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           </div>
         )}
 
+        {/* Payments Table */}
+        {activeTab === 'payments' && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Payment Transactions</h2>
+              <span className="text-sm text-slate-500">
+                {payments.filter(p => p.status === 'pending').length} pending
+              </span>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 text-sm text-slate-600">
+                  <tr>
+                    <th className="px-6 py-3 text-left font-semibold">User</th>
+                    <th className="px-6 py-3 text-left font-semibold">Package</th>
+                    <th className="px-6 py-3 text-left font-semibold">Amount</th>
+                    <th className="px-6 py-3 text-left font-semibold">Credits</th>
+                    <th className="px-6 py-3 text-left font-semibold">Method</th>
+                    <th className="px-6 py-3 text-left font-semibold">Transaction ID</th>
+                    <th className="px-6 py-3 text-left font-semibold">Status</th>
+                    <th className="px-6 py-3 text-left font-semibold">Date</th>
+                    <th className="px-6 py-3 text-left font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-900">{payment.user_email || 'Unknown'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600 capitalize">{payment.package_id}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-semibold text-slate-900">৳{payment.amount}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">{payment.credits} credits</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs bg-slate-100 px-2 py-1 rounded capitalize">
+                          {payment.payment_method}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono">
+                          {payment.transaction_id || 'N/A'}
+                        </code>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          payment.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          payment.status === 'failed' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {payment.status === 'completed' && <CheckCircle size={12} className="mr-1" />}
+                          {payment.status === 'failed' && <XCircle size={12} className="mr-1" />}
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                          <Clock size={12} />
+                          {formatDate(payment.created_at)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {payment.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => verifyPayment(payment.id)}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <CheckCircle size={12} />
+                              Verify
+                            </button>
+                            <button
+                              onClick={() => rejectPayment(payment.id)}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <XCircle size={12} />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {payment.status === 'completed' && (
+                          <span className="text-xs text-green-600">✓ Verified</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {payments.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                        No payments yet
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Users Table */}
+        {activeTab === 'users' && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">All Users</h2>
@@ -327,13 +549,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         {/* Instructions */}
         <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-xl">
-          <h3 className="font-bold text-amber-800 mb-2">Admin Notes</h3>
-          <ul className="text-sm text-amber-700 space-y-1">
-            <li>• This panel shows all registered users and their credits</li>
-            <li>• Users get 5 free credits on signup</li>
-            <li>• Referral bonus: 10 credits for both parties</li>
-            <li>• To add credits manually, use Supabase Dashboard → Table Editor → profiles</li>
-            <li>• For feedback, add a feedback table in Supabase (coming soon)</li>
+          <h3 className="font-bold text-amber-800 mb-2">Admin Instructions</h3>
+          <ul className="text-sm text-amber-700 space-y-2">
+            <li><strong>Payment Verification:</strong> When a user submits a payment, check your bKash/Nagad account. If payment received, click "Verify" to add credits automatically.</li>
+            <li><strong>Manual Credit Addition:</strong> Go to Supabase Dashboard → Table Editor → profiles → Edit user → Update credits field</li>
+            <li><strong>Free Credits:</strong> Users get 5 free credits on signup</li>
+            <li><strong>Referral Bonus:</strong> 10 credits for both referrer and referee</li>
           </ul>
         </div>
 

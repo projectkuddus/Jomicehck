@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Profile doesn't exist, create one
         const newProfile = {
           id: userId,
-          email: userEmail || user?.email || '',
+          email: userEmail || '',
           credits: FREE_SIGNUP_CREDITS,
           referral_code: generateReferralCode(),
           referred_by: null,

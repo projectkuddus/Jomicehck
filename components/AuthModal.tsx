@@ -1,132 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Loader2, Gift, CheckCircle2, Copy, Share2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Copy, Share2, Gift } from 'lucide-react';
 import { useAuth, REFERRAL_BONUS_CREDITS, FREE_SIGNUP_CREDITS } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type AuthMode = 'login' | 'signup' | 'forgot' | 'success' | 'confirm';
-
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { signUp, signIn, resetPassword, profile, applyReferralCode, isConfigured } = useAuth();
+  const { profile, applyReferralCode, isConfigured } = useAuth();
   
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Reset state when modal opens/closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setMode('login');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setReferralCode('');
-      setError('');
       setLoading(false);
-      setShowPassword(false);
+      setError('');
+      setShowSuccess(false);
+      setReferralCode('');
     }
   }, [isOpen]);
 
+  // Show success screen if user just logged in
+  useEffect(() => {
+    if (isOpen && profile && !showSuccess) {
+      setShowSuccess(true);
+    }
+  }, [isOpen, profile]);
+
   if (!isOpen) return null;
 
-  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePassword = (password: string) => password.length >= 6;
-
-  // Handle Login
-  const handleLogin = async () => {
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email');
-      return;
-    }
-    if (!password) {
-      setError('Please enter your password');
-      return;
-    }
-
+  // Sign in with Google
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
 
-    const result = await signIn(email, password);
-    
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
 
-    if (result.success) {
-      onClose();
-    } else {
-      setError(result.error || 'Invalid email or password');
-    }
-  };
-
-  // Handle Sign Up
-  const handleSignUp = async () => {
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email');
-      return;
-    }
-    if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const result = await signUp(email, password);
-    
-    setLoading(false);
-
-    if (result.success) {
-      if (result.needsConfirmation) {
-        setMode('confirm');
-      } else {
-        setMode('success');
+      if (error) {
+        setError(error.message);
+        setLoading(false);
       }
-    } else {
-      setError(result.error || 'Failed to create account');
+      // If successful, user will be redirected to Google
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google');
+      setLoading(false);
     }
   };
 
-  // Handle Forgot Password
-  const handleForgotPassword = async () => {
-    if (!validateEmail(email)) {
-      setError('Please enter your email');
-      return;
-    }
-
+  // Sign in with Apple
+  const handleAppleLogin = async () => {
     setLoading(true);
     setError('');
 
-    const result = await resetPassword(email);
-    
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
 
-    if (result.success) {
-      alert('Password reset email sent! Check your inbox.');
-      setMode('login');
-    } else {
-      setError(result.error || 'Failed to send reset email');
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Apple');
+      setLoading(false);
     }
   };
 
   // Handle Referral Code
   const handleApplyReferral = async () => {
-    if (!referralCode.trim()) {
-      setMode('success');
-      return;
-    }
+    if (!referralCode.trim()) return;
 
     setLoading(true);
     setError('');
@@ -135,10 +94,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     
     setLoading(false);
 
-    if (result.success) {
-      setMode('success');
-    } else {
+    if (!result.success) {
       setError(result.error || 'Invalid referral code');
+    } else {
+      setReferralCode('');
     }
   };
 
@@ -168,7 +127,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
         <div className="relative bg-white rounded-2xl p-8 max-w-md w-full text-center">
-          <p className="text-gray-600">Authentication system is being configured.</p>
+          <p className="text-gray-600">Authentication is being configured.</p>
           <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-100 rounded-lg">Close</button>
         </div>
       </div>
@@ -186,249 +145,35 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white">
             <X size={20} />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              {mode === 'login' && <KeyRound size={24} />}
-              {mode === 'signup' && <Mail size={24} />}
-              {mode === 'forgot' && <Mail size={24} />}
-              {mode === 'confirm' && <Mail size={24} />}
-              {mode === 'success' && <CheckCircle2 size={24} />}
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">
-                {mode === 'login' && 'Login'}
-                {mode === 'signup' && 'Create Account'}
-                {mode === 'forgot' && 'Reset Password'}
-                {mode === 'confirm' && 'Check Email'}
-                {mode === 'success' && 'Welcome!'}
-              </h3>
-              <p className="text-white/80 text-sm">
-                {mode === 'login' && 'Enter your credentials'}
-                {mode === 'signup' && 'Join JomiCheck today'}
-                {mode === 'forgot' && 'We\'ll send a reset link'}
-                {mode === 'confirm' && 'Confirm your email'}
-                {mode === 'success' && 'You\'re all set'}
-              </p>
-            </div>
+          <div className="text-center">
+            <h3 className="text-2xl font-bold">
+              {showSuccess && profile ? 'Welcome!' : 'Login to JomiCheck'}
+            </h3>
+            <p className="text-white/80 text-sm mt-1">
+              {showSuccess && profile ? 'You\'re all set' : 'Continue with your account'}
+            </p>
           </div>
         </div>
 
         {/* Body */}
         <div className="p-6">
           
-          {/* LOGIN */}
-          {mode === 'login' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Your password"
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 size={20} className="animate-spin" /> : null}
-                {loading ? 'Logging in...' : 'Login'}
-              </button>
-
-              <div className="flex justify-between text-sm">
-                <button onClick={() => { setMode('forgot'); setError(''); }} className="text-green-600 hover:underline">
-                  Forgot password?
-                </button>
-                <button onClick={() => { setMode('signup'); setError(''); }} className="text-gray-600 hover:underline">
-                  Create account
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* SIGNUP */}
-          {mode === 'signup' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSignUp()}
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handleSignUp}
-                disabled={loading}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 size={20} className="animate-spin" /> : null}
-                {loading ? 'Creating account...' : 'Create Account'}
-              </button>
-
-              <p className="text-xs text-gray-500 text-center">
-                You'll get {FREE_SIGNUP_CREDITS} free credits to start!
-              </p>
-
-              <button onClick={() => { setMode('login'); setError(''); }} className="w-full text-sm text-gray-600 hover:underline">
-                Already have an account? Login
-              </button>
-            </div>
-          )}
-
-          {/* FORGOT PASSWORD */}
-          {mode === 'forgot' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                  onKeyDown={(e) => e.key === 'Enter' && handleForgotPassword()}
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handleForgotPassword}
-                disabled={loading}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 size={20} className="animate-spin" /> : null}
-                {loading ? 'Sending...' : 'Send Reset Link'}
-              </button>
-
-              <button onClick={() => { setMode('login'); setError(''); }} className="w-full text-sm text-gray-600 hover:underline">
-                ← Back to login
-              </button>
-            </div>
-          )}
-
-          {/* EMAIL CONFIRMATION NEEDED */}
-          {mode === 'confirm' && (
-            <div className="space-y-4 text-center">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <Mail size={40} className="text-blue-600" />
-              </div>
-              
-              <h4 className="text-xl font-bold text-gray-900">Check Your Email</h4>
-              
-              <p className="text-gray-600">
-                We sent a confirmation link to <strong>{email}</strong>
-              </p>
-              
-              <p className="text-sm text-gray-500">
-                Click the link in the email to activate your account, then come back to login.
-              </p>
-
-              <button
-                onClick={() => setMode('login')}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors"
-              >
-                Go to Login
-              </button>
-            </div>
-          )}
-
-          {/* SUCCESS - Show referral */}
-          {mode === 'success' && (
+          {/* SUCCESS SCREEN */}
+          {showSuccess && profile ? (
             <div className="space-y-4 text-center">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 size={40} className="text-green-600" />
               </div>
               
-              <h4 className="text-xl font-bold text-gray-900">Welcome to JomiCheck!</h4>
-              
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="text-3xl font-black text-green-600 mb-1">
-                  {profile?.credits || FREE_SIGNUP_CREDITS}
+                  {profile.credits}
                 </div>
                 <div className="text-green-700 font-medium">Credits Available</div>
               </div>
 
-              {/* Referral Code */}
-              {profile?.referral_code && (
+              {/* Referral Code Display */}
+              {profile.referral_code && (
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                   <p className="text-sm text-gray-600 mb-2">Share & earn {REFERRAL_BONUS_CREDITS} credits:</p>
                   <div className="flex items-center justify-center gap-2 mb-3">
@@ -446,7 +191,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               )}
 
               {/* Apply referral if not applied */}
-              {profile && !profile.referred_by && (
+              {!profile.referred_by && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
                     <Gift size={18} />
@@ -479,6 +224,55 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               >
                 Start Analyzing
               </button>
+            </div>
+          ) : (
+            /* LOGIN BUTTONS */
+            <div className="space-y-4">
+              
+              {/* Google Login Button */}
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl transition-all font-medium text-gray-700 disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                )}
+                Continue with Google
+              </button>
+
+              {/* Apple Login Button */}
+              <button
+                onClick={handleAppleLogin}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-black hover:bg-gray-900 rounded-xl transition-all font-medium text-white disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
+                )}
+                Continue with Apple
+              </button>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm text-center">
+                  {error}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 text-center pt-2">
+                New users get {FREE_SIGNUP_CREDITS} free credits to start!
+              </p>
             </div>
           )}
         </div>

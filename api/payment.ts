@@ -37,12 +37,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Validate input
     if (!userId || !packageId || !paymentMethod) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     const packageData = CREDIT_PACKAGES[packageId];
     if (!packageData) {
-      return res.status(400).json({ error: 'Invalid package' });
+      return res.status(400).json({ success: false, error: 'Invalid package' });
     }
 
     // For SSLCommerz, we'll create a payment session
@@ -97,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // For manual verification (bKash/Nagad)
     if (paymentMethod === 'bkash' || paymentMethod === 'nagad') {
       if (!transactionId) {
-        return res.status(400).json({ error: 'Transaction ID required for manual payment' });
+        return res.status(400).json({ success: false, error: 'Transaction ID required for manual payment' });
       }
 
       // Create pending payment record
@@ -133,10 +133,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    return res.status(400).json({ error: 'Invalid payment method' });
+    return res.status(400).json({ success: false, error: 'Invalid payment method' });
   } catch (error: any) {
     console.error('Payment API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      success: false,
+      error: error.message || 'Internal server error. Please check Vercel logs for details.' 
+    });
   }
 }
 

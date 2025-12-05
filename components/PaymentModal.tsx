@@ -237,10 +237,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                     <strong>Step 1:</strong> Send <strong>৳{currentPackage.price}</strong> to:
                   </p>
                   <p className="text-lg font-bold text-blue-900 mb-1">
-                    {method === 'bkash' ? 'bKash: 01XXXXXXXXX' : 'Nagad: 01XXXXXXXXX'}
+                    {method === 'bkash' ? 'bKash: 01613078101' : 'Nagad: 01613078101'}
                   </p>
-                  <p className="text-xs text-blue-600 italic">
-                    (Update this number in your admin panel or contact support)
+                  <p className="text-xs text-blue-600">
+                    Send money and copy the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app
                   </p>
                 </div>
               </div>

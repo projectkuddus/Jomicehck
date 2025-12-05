@@ -55,14 +55,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setLoading(true);
     setError('');
 
-    const result = await verifyOTP(email, otp);
+    // Extract token from link if user pasted a full URL
+    let token = otp.trim();
+    if (token.includes('token=')) {
+      // User pasted the full confirmation link - extract token
+      const urlParams = new URLSearchParams(token.split('?')[1] || '');
+      token = urlParams.get('token') || token;
+    } else if (token.includes('http')) {
+      // Full URL - try to extract token
+      try {
+        const url = new URL(token);
+        token = url.searchParams.get('token') || token.split('token=')[1]?.split('&')[0] || token;
+      } catch {
+        // Not a valid URL, use as-is
+      }
+    }
+
+    const result = await verifyOTP(email, token);
     
     setLoading(false);
     
     if (result.success) {
       setStep('referral');
     } else {
-      setError(result.error || 'Invalid code');
+      setError(result.error || 'Invalid code. If you received a link, copy the token from the URL (the long code after "token=")');
     }
   };
 

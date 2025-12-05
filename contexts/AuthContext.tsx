@@ -123,13 +123,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     let mounted = true;
     
-    // Force loading to end after 3 seconds - prevents infinite loading
+    // Force loading to end after 1 second - faster UI
     const timeoutId = setTimeout(() => {
       if (mounted && loading) {
         console.warn('Auth timeout - continuing without blocking UI');
         setLoading(false);
       }
-    }, 3000);
+    }, 1000);
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -202,7 +202,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Note: Profile refresh is now handled in the main useEffect above
 
-  // Send OTP code to email (6-digit code, not magic link)
+  // Send OTP code to email (token, not magic link)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigured) {
       return { success: false, error: 'Auth not configured' };
@@ -213,8 +213,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: email.toLowerCase().trim(),
         options: {
           shouldCreateUser: true,
-          // This tells Supabase we want to verify with a code, not a link
-          emailRedirectTo: undefined,
+          // Force OTP token instead of magic link
+          emailRedirectTo: null,
         },
       });
 
@@ -251,17 +251,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Sign out
+  // Sign out - completely clear all state
   const signOut = async () => {
+    // Clear local state FIRST
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    
+    // Then sign out from Supabase
     try {
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Sign out error:', err);
     }
-    // Always clear local state even if Supabase call fails
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    
+    // Clear any cached data
+    localStorage.removeItem('sb-' + (supabaseUrl?.split('//')[1]?.split('.')[0] || 'supabase') + '-auth-token');
   };
 
   // Add credits to user account

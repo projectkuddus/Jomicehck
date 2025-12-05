@@ -50,15 +50,17 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
     setIsOpen(false);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     // Close menu immediately
     setIsOpen(false);
     
-    // Sign out (don't await - just fire and reload)
-    signOut().finally(() => {
-      // Force reload to clear all state
+    // Sign out and wait for it to complete
+    await signOut();
+    
+    // Small delay to ensure state is cleared, then reload
+    setTimeout(() => {
       window.location.href = '/';
-    });
+    }, 100);
   };
 
   // Simple loading state - show briefly, max 2 seconds

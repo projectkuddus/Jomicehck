@@ -142,15 +142,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       ></div>
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 my-4">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-5 text-white relative">
@@ -172,15 +172,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
         <div className="p-6">
           
           {/* Credit Packages */}
-          <div className="mb-6">
-            <div className="text-sm font-semibold text-slate-700 mb-3">Select Credit Package</div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="mb-4 sm:mb-6">
+            <div className="text-sm font-semibold text-slate-700 mb-2 sm:mb-3">Select Credit Package</div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {creditPackages.map((pkg) => (
                 <div
                   key={pkg.credits}
                   onClick={() => setSelectedPackage(pkg.credits)}
                   className={`
-                    relative p-4 rounded-xl border-2 cursor-pointer transition-all
+                    relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all
                     ${selectedPackage === pkg.credits 
                       ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-200' 
                       : 'border-slate-100 hover:border-slate-200 bg-white'
@@ -192,9 +192,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                       <Sparkles size={10} /> Best
                     </div>
                   )}
-                  <div className="font-bold text-slate-900">{pkg.credits} Credits</div>
-                  <div className="text-xl font-extrabold text-slate-900">৳{pkg.price}</div>
-                  <div className="text-xs text-slate-500">৳{pkg.perPage}/page</div>
+                  <div className="font-bold text-slate-900 text-sm sm:text-base">{pkg.credits} Credits</div>
+                  <div className="text-lg sm:text-xl font-extrabold text-slate-900">৳{pkg.price}</div>
+                  <div className="text-[10px] sm:text-xs text-slate-500">৳{pkg.perPage}/page</div>
                   {selectedPackage === pkg.credits && (
                     <div className="absolute top-3 right-3">
                       <CheckCircle size={18} className="text-brand-600" />
@@ -206,7 +206,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
           </div>
 
           {/* Summary */}
-          <div className="bg-slate-50 rounded-xl p-4 mb-6">
+          <div className="bg-slate-50 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-slate-600">Selected Package</span>
               <span className="font-bold text-slate-900">{currentPackage.credits} Credits</span>
@@ -225,54 +225,54 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
           </div>
 
           {/* Payment Methods */}
-          <div className="text-sm font-semibold text-slate-700 mb-3">Payment Method</div>
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="text-sm font-semibold text-slate-700 mb-2 sm:mb-3">Payment Method</div>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div 
               onClick={() => setMethod('bkash')}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
+              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all ${method === 'bkash' ? 'border-pink-500 bg-pink-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
-              <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-xs">bKash</div>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold text-[10px] sm:text-xs">bKash</div>
               <div className="flex-1">
-                <p className="font-bold text-slate-800 text-sm">bKash</p>
+                <p className="font-bold text-slate-800 text-xs sm:text-sm">bKash</p>
               </div>
-              {method === 'bkash' && <CheckCircle size={16} className="text-pink-600" />}
+              {method === 'bkash' && <CheckCircle size={14} className="sm:w-4 sm:h-4 text-pink-600" />}
             </div>
 
             <div 
               onClick={() => setMethod('nagad')}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
+              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all ${method === 'nagad' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-200'}`}
             >
-              <div className="w-10 h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-xs">Nagad</div>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-orange-600 flex items-center justify-center text-white font-bold text-[10px] sm:text-xs">Nagad</div>
               <div className="flex-1">
-                <p className="font-bold text-slate-800 text-sm">Nagad</p>
+                <p className="font-bold text-slate-800 text-xs sm:text-sm">Nagad</p>
               </div>
-              {method === 'nagad' && <CheckCircle size={16} className="text-orange-600" />}
+              {method === 'nagad' && <CheckCircle size={14} className="sm:w-4 sm:h-4 text-orange-600" />}
             </div>
           </div>
 
           {/* Payment Instructions and Transaction ID Input - Always shown */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">📱 Payment Instructions:</p>
-                <div className="bg-white p-4 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-800 mb-3">
-                    <strong>Step 1:</strong> Send <strong className="text-lg">৳{currentPackage.price}</strong> to:
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl">
+              <div className="mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-2">📱 Payment Instructions:</p>
+                <div className="bg-white p-3 sm:p-4 rounded-lg border border-blue-200">
+                  <p className="text-xs sm:text-sm text-blue-800 mb-2 sm:mb-3">
+                    <strong>Step 1:</strong> Send <strong className="text-base sm:text-lg">৳{currentPackage.price}</strong> to:
                   </p>
-                  <div className="bg-blue-50 p-3 rounded-lg mb-3">
-                    <p className="text-2xl font-bold text-blue-900 text-center">
+                  <div className="bg-blue-50 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3">
+                    <p className="text-lg sm:text-2xl font-bold text-blue-900 text-center break-all">
                       {method === 'bkash' ? 'bKash: 01613078101' : 'Nagad: 01613078101'}
                     </p>
                   </div>
-                  <p className="text-xs text-blue-600 mb-2">
+                  <p className="text-[10px] sm:text-xs text-blue-600 mb-1 sm:mb-2">
                     💡 Open your {method === 'bkash' ? 'bKash' : 'Nagad'} app and send the money
                   </p>
-                  <p className="text-xs text-blue-600">
+                  <p className="text-[10px] sm:text-xs text-blue-600">
                     📋 Copy the transaction ID from your {method === 'bkash' ? 'bKash' : 'Nagad'} app after sending
                   </p>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-2">
                   <strong>Step 2:</strong> Enter Transaction ID
                 </label>
                 <input
@@ -280,9 +280,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   value={transactionId}
                   onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
                   placeholder={`Enter ${method === 'bkash' ? 'bKash' : 'Nagad'} transaction ID`}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono text-center text-lg"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono text-center text-base sm:text-lg"
                 />
-                <p className="text-xs text-slate-500 mt-2 text-center">
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-2 text-center">
                   ⏳ After submission, admin will verify and add credits within 24 hours
                 </p>
               </div>
@@ -290,31 +290,31 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-              <AlertCircle size={16} className="text-red-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="mb-4 sm:mb-6 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertCircle size={14} className="sm:w-4 sm:h-4 text-red-600 mt-0.5 shrink-0" />
+              <p className="text-xs sm:text-sm text-red-700">{error}</p>
             </div>
           )}
 
           <button
             onClick={handlePay}
             disabled={isProcessing}
-            className={`w-full py-4 px-4 rounded-xl font-bold text-lg text-white shadow-xl shadow-brand-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]
+            className={`w-full py-3 sm:py-4 px-4 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg text-white shadow-xl shadow-brand-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]
               ${isProcessing ? 'bg-slate-400 cursor-not-allowed' : 'bg-brand-600 hover:bg-brand-700'}
             `}
           >
             {isProcessing ? (
               <>
-                <Loader2 size={20} className="animate-spin" />
-                Processing...
+                <Loader2 size={18} className="sm:w-5 sm:h-5 animate-spin" />
+                <span className="text-sm sm:text-base">Processing...</span>
               </>
             ) : (
-              `Pay ৳${currentPackage.price} for ${currentPackage.credits} Credits`
+              <span className="text-sm sm:text-base">Pay ৳{currentPackage.price} for {currentPackage.credits} Credits</span>
             )}
           </button>
           
-          <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
-            <Lock size={12} />
+          <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400">
+            <Lock size={10} className="sm:w-3 sm:h-3" />
             <span>Manual verification - Credits added after admin approval</span>
           </div>
         </div>

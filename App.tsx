@@ -196,6 +196,13 @@ const AppContent: React.FC = () => {
     if (success) {
       runAnalysis();
     } else {
+      // If credit deduction failed, show error
+      setAnalysis({
+        isLoading: false,
+        isStreaming: false,
+        result: null,
+        error: 'Failed to deduct credits. Please refresh and try again, or contact support if the issue persists.',
+      });
       setIsPaymentOpen(true);
     }
   };

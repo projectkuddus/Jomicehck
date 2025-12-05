@@ -153,17 +153,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
       <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 my-4">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-5 text-white relative">
-          <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white transition-colors">
-            <X size={20} />
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-4 sm:px-6 py-4 sm:py-5 text-white relative">
+          <button onClick={onClose} className="absolute right-3 sm:right-4 top-3 sm:top-4 text-white/70 hover:text-white transition-colors">
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <CreditCard size={24} />
+          <div className="flex items-center gap-2 sm:gap-3 pr-8">
+            <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg">
+              <CreditCard size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">Buy Credits</h3>
-              <p className="text-sm text-white/80">You need {creditsNeeded} credits for this analysis</p>
+              <h3 className="text-base sm:text-lg font-bold">Buy Credits</h3>
+              <p className="text-xs sm:text-sm text-white/80">You need {creditsNeeded} credits for this analysis</p>
             </div>
           </div>
         </div>

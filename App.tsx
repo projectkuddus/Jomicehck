@@ -200,7 +200,7 @@ const AppContent: React.FC = () => {
   const priceCalculation = useMemo(() => {
     if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, userCredits: 0, canAfford: false, needsLogin: false };
     
-    // Calculate total "pages" (Images = 1, PDF = 5 estimated)
+    // Calculate total "pages" (Images = 1, PDF = actual page count)
     const totalPages = files.reduce((acc, file) => acc + file.estimatedPages, 0);
     const userCredits = profile?.credits || 0;
     

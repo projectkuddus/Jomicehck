@@ -59,7 +59,7 @@ const Pricing: React.FC = () => {
     },
     {
       q: "How do credits work?",
-      a: "1 credit = 1 page. Images count as 1 page. PDFs are estimated at 5 pages. New users get 5 free pages to try."
+      a: "1 credit = 1 page. Images count as 1 page. PDFs are counted by actual page number. New users get 5 free pages to try."
     },
     {
       q: "Do credits expire?",

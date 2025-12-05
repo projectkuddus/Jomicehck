@@ -47,8 +47,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleVerifyOTP = async () => {
-    if (!otp || otp.length < 6) {
-      setError('Please enter the 6-digit code');
+    if (!otp || otp.trim().length < 6) {
+      setError('Please enter the verification code from your email');
       return;
     }
 
@@ -225,15 +225,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Enter 6-digit Code
+                  Enter Verification Code
                 </label>
                 <input
                   type="text"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-center text-2xl tracking-[0.5em] font-mono"
-                  maxLength={6}
+                  onChange={(e) => setOtp(e.target.value.trim())}
+                  placeholder="Paste the code from email"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-center text-lg font-mono"
                   onKeyDown={(e) => e.key === 'Enter' && handleVerifyOTP()}
                 />
               </div>
@@ -242,7 +241,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 Check your inbox: <span className="font-medium text-slate-700">{email}</span>
               </p>
               <p className="text-xs text-slate-400 text-center">
-                (Also check spam/junk folder)
+                Copy the code from the email and paste it here
               </p>
 
               {error && (
@@ -253,7 +252,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
               <button
                 onClick={handleVerifyOTP}
-                disabled={loading || otp.length < 6}
+                disabled={loading || otp.trim().length < 6}
                 className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (

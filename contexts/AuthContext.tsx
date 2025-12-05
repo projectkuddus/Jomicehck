@@ -148,20 +148,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
     });
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
-      if (!mounted) return;
-      
-      if (initialSession?.user) {
-        setSession(initialSession);
-        setUser(initialSession.user);
+    // Get initial session - also handles OAuth callback
+    const initializeSession = async () => {
+      try {
+        // Check for OAuth callback in URL hash first
+        const hash = window.location.hash;
+        if (hash.includes('access_token') || hash.includes('error')) {
+          // OAuth callback detected - let Supabase process it
+          console.log('OAuth callback detected in URL');
+        }
+
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
-        const profileData = await fetchProfile(initialSession.user.id, initialSession.user.email);
-        if (mounted) setProfile(profileData);
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('Session error:', error);
+          setLoading(false);
+          return;
+        }
+        
+        if (initialSession?.user) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          
+          const profileData = await fetchProfile(initialSession.user.id, initialSession.user.email);
+          if (mounted) setProfile(profileData);
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to get session:', err);
+        if (mounted) setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
+
+    initializeSession();
 
     // Timeout
     const timeout = setTimeout(() => {

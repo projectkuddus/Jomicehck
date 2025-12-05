@@ -66,16 +66,30 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('hashchange', checkAdminAccess);
   }, []);
 
-  // Check for password reset hash (Supabase redirects here)
+  // Check for OAuth callback or password reset in URL hash
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes('type=recovery') || hash.includes('access_token')) {
-      // Password reset link clicked - open auth modal in reset mode
-      setIsAuthOpen(true);
-      // Clear the hash
+    
+    // OAuth callback - Supabase redirects here with access_token
+    if (hash.includes('access_token') || hash.includes('type=recovery')) {
+      // Clear the hash immediately to prevent issues
       window.history.replaceState(null, '', window.location.pathname);
+      
+      // If it's a password reset, open auth modal
+      if (hash.includes('type=recovery')) {
+        setIsAuthOpen(true);
+      }
+      // For OAuth, the session will be processed by AuthContext
+      // and the modal will close automatically when profile loads
     }
   }, []);
+
+  // Close auth modal when user successfully logs in
+  useEffect(() => {
+    if (profile && isAuthOpen) {
+      setIsAuthOpen(false);
+    }
+  }, [profile, isAuthOpen]);
 
   const [analysis, setAnalysis] = useState<AnalysisState>({
     isLoading: false,

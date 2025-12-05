@@ -23,12 +23,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  // Close modal if user is logged in
+  // Close modal immediately when user logs in
   useEffect(() => {
-    if (isOpen && profile) {
+    if (profile) {
+      // User is logged in - close modal
       onClose();
     }
-  }, [isOpen, profile, onClose]);
+  }, [profile, onClose]);
 
   if (!isOpen) return null;
 

@@ -283,8 +283,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
                   ⏳ After submission, admin will verify and add credits within 24 hours
                 </p>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* Error Message */}
           {error && (

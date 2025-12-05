@@ -172,18 +172,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         credits: packageData.credits,
       });
     } catch (dbError: any) {
-      console.error('Database error:', dbError);
+      console.error('❌ Database error:', dbError);
+      console.error('❌ Database error stack:', dbError.stack);
       return res.status(500).json({ 
         success: false,
-        error: dbError.message || 'Database error occurred' 
+        error: dbError.message || 'Database error occurred',
+        errorType: 'DatabaseError',
       });
     }
   } catch (error: any) {
-    console.error('Payment API error:', error);
-    return res.status(500).json({ 
-      success: false,
-      error: error.message || 'Internal server error. Please check Vercel logs for details.' 
-    });
+    console.error('❌ Payment API error:', error);
+    console.error('❌ Error type:', typeof error);
+    console.error('❌ Error stack:', error.stack);
+    
+    // Always return valid JSON, even for unexpected errors
+    try {
+      return res.status(500).json({ 
+        success: false,
+        error: error?.message || 'Internal server error. Please check Vercel logs for details.',
+        errorType: 'UnexpectedError',
+      });
+    } catch (jsonError) {
+      // If even JSON response fails, log it
+      console.error('❌ Failed to send JSON response:', jsonError);
+      // Try to send plain text as last resort
+      res.status(500).send('Internal server error');
+    }
   }
 }
 

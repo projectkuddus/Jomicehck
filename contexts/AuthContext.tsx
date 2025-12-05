@@ -179,15 +179,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, [isConfigured]);
 
-  // Refresh profile when user changes (fallback)
+  // Refresh profile when user changes (fallback) - only if profile is missing
   useEffect(() => {
     if (user && !profile && !loading && isConfigured) {
-      fetchProfile(user.id, user.email).then(setProfile);
+      fetchProfile(user.id, user.email)
+        .then(setProfile)
+        .catch(err => {
+          console.error('Fallback profile fetch error:', err);
+        });
     }
-  }, [user, profile, loading, isConfigured]);
+  }, [user?.id]); // Only depend on user ID to avoid infinite loops
 
   // Send OTP code to email (6-digit code, not magic link)
   const sendOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {

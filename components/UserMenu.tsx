@@ -51,8 +51,17 @@ const UserMenu: React.FC<UserMenuProps> = ({ onOpenAuth }) => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    setIsOpen(false);
+    try {
+      await signOut();
+      setIsOpen(false);
+      // Force page reload to clear any cached state
+      window.location.reload();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+      // Still try to close menu and reload
+      setIsOpen(false);
+      window.location.reload();
+    }
   };
 
   // Simple loading state - show briefly, max 2 seconds

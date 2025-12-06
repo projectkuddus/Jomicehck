@@ -12,10 +12,10 @@ interface PaymentModalProps {
 }
 
 const creditPackages = [
-  { credits: 20, price: 199, perCredit: 9.95 }, // 199/20 = 9.95 per credit
-  { credits: 50, price: 399, perCredit: 7.98, popular: true }, // 399/50 = 7.98 per credit
-  { credits: 100, price: 699, perCredit: 6.99 }, // 699/100 = 6.99 per credit
-  { credits: 250, price: 1499, perCredit: 6.00 }, // 1499/250 = 6.00 per credit
+  { id: 'starter', credits: 20, price: 199, perCredit: 10, name: 'Starter' },
+  { id: 'popular', credits: 50, price: 449, perCredit: 9, popular: true, name: 'Popular' },
+  { id: 'value', credits: 100, price: 799, perCredit: 8, name: 'Value' },
+  { id: 'business', credits: 300, price: 1999, perCredit: 6.66, name: 'Business' },
 ];
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm, amount, creditsNeeded = 0 }) => {
@@ -50,8 +50,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onConfirm,
   if (!isOpen) return null;
 
   const currentPackage = creditPackages.find(p => p.credits === selectedPackage) || creditPackages[1];
-  const packageIndex = creditPackages.findIndex(p => p.credits === selectedPackage);
-  const packageId = ['starter', 'popular', 'pro', 'agent'][packageIndex] || 'popular';
+  const packageId = currentPackage.id;
 
   const handlePay = async () => {
     if (!user) {

@@ -28,13 +28,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Constants
+// Constants - Credit Packages
 export const CREDIT_PACKAGES = [
-  { name: "Starter", credits: 20, price: 199, perPage: 10 },
-  { name: "Popular", credits: 50, price: 399, perPage: 8, isPopular: true },
-  { name: "Pro", credits: 100, price: 699, perPage: 7 },
-  { name: "Agent", credits: 250, price: 1499, perPage: 6 },
+  { id: "starter", name: "Starter", credits: 20, price: 199, perCredit: 10 },
+  { id: "popular", name: "Popular", credits: 50, price: 449, perCredit: 9, isPopular: true },
+  { id: "value", name: "Value", credits: 100, price: 799, perCredit: 8 },
+  { id: "business", name: "Business", credits: 300, price: 1999, perCredit: 6.66 },
 ];
+
+// Analysis Tiers - Credits per page
+export const ANALYSIS_TIERS = {
+  PLUS: {
+    id: 'plus',
+    name: 'PLUS',
+    creditsPerPage: 1,
+    description: 'দ্রুত AI বিশ্লেষণ',
+    features: ['AI Risk Score', 'Basic Report', 'AI Chat'],
+    model: 'gemini-2.0-flash',
+  },
+  PRO: {
+    id: 'pro',
+    name: 'PRO',
+    creditsPerPage: 4,
+    description: 'গভীর বিশ্লেষণ + পুরানো দলিল',
+    features: ['Everything in PLUS', 'Old Document OCR', 'Legal References', 'Deep Analysis', 'Hidden Clause Detection'],
+    model: 'gemini-1.5-pro',
+  },
+};
 
 export const REFERRAL_BONUS_CREDITS = 10;
 export const FREE_SIGNUP_CREDITS = 5;

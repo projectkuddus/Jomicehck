@@ -1,26 +1,29 @@
 import { FileWithPreview, AnalysisResult } from "../types";
 
 // API Configuration
-// In production on Vercel, use relative URLs (same domain)
-// In development, use localhost or the env variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD ? '' : 'http://localhost:4000');
+
+// Analysis Tiers
+export type AnalysisTier = 'plus' | 'pro';
 
 // Internal state for chat session management
 let analysisContext: AnalysisResult | null = null;
 let chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [];
 
-// Batch settings - PDFs are now converted to images, so sizes are predictable
-// Each image is ~200-400KB after compression
-const MAX_BATCH_SIZE = 8; // More files per batch since they're smaller
-const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024; // 4MB limit
-const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024; // 3MB per file (rarely hit now)
+// Batch settings
+const MAX_BATCH_SIZE = 8;
+const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024;
+const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024;
 
 /**
  * Analyze a single batch of documents
+ * @param tier - 'plus' for basic analysis, 'pro' for deep analysis with better AI
  */
-const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; data: string }>): Promise<AnalysisResult> => {
-  // Add metadata about document count for detection
+const analyzeBatch = async (
+  documents: Array<{ name: string; mimeType: string; data: string }>,
+  tier: AnalysisTier = 'plus'
+): Promise<AnalysisResult> => {
   const requestBody = {
     documents,
     metadata: {
@@ -29,7 +32,12 @@ const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; d
     }
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+  // Use different endpoint based on tier
+  const endpoint = tier === 'pro' ? '/api/analyze-pro' : '/api/analyze';
+  
+  console.log(`🔷 Using ${tier.toUpperCase()} analysis (${endpoint})`);
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -141,11 +149,20 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
 /**
  * Analyze property documents with batch processing for large file sets
  */
+/**
+ * Analyze property documents
+ * @param files - Array of files to analyze
+ * @param tier - 'plus' for basic (1 credit/page), 'pro' for deep analysis (4 credits/page)
+ * @param onProgress - Progress callback
+ */
 export const analyzeDocuments = async (
   files: FileWithPreview[],
+  tier: AnalysisTier = 'plus',
   onProgress?: (current: number, total: number, currentBatch: number, totalBatches: number) => void
 ): Promise<AnalysisResult> => {
   try {
+    console.log(`🚀 Starting ${tier.toUpperCase()} analysis for ${files.length} files`);
+    
     // Convert FileWithPreview[] to backend DocumentInput format
     const allDocuments = files
       .filter(file => file.base64Data)
@@ -233,7 +250,7 @@ export const analyzeDocuments = async (
       // Process batch group in parallel
       const batchPromises = batchGroup.map(async (batch, idx) => {
         try {
-          const result = await analyzeBatch(batch);
+          const result = await analyzeBatch(batch, tier);
           return { success: true, result, batchIndex: i + idx };
         } catch (error: any) {
           console.error(`Batch ${i + idx + 1} failed:`, error);

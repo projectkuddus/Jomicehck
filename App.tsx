@@ -16,6 +16,8 @@ import HistorySidebar from './components/HistorySidebar';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import AuthDebug from './components/AuthDebug';
+import BlogList from './components/BlogList';
+import BlogArticle from './components/BlogArticle';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import { analyzeDocuments } from './services/geminiService';
@@ -35,7 +37,7 @@ import {
   LogIn
 } from 'lucide-react';
 
-type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy';
+type PageView = 'home' | 'how-it-works' | 'pricing' | 'support' | 'terms' | 'privacy' | 'blog' | 'blog-article';
 type ResultTab = 'report' | 'chat';
 
 const AppContent: React.FC = () => {
@@ -47,6 +49,7 @@ const AppContent: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>('report');
+  const [blogSlug, setBlogSlug] = useState<string>('');
   
   // History State
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -746,6 +749,22 @@ const AppContent: React.FC = () => {
             {currentPage === 'support' && <Support />}
             {currentPage === 'terms' && <Terms />}
             {currentPage === 'privacy' && <Privacy />}
+            {currentPage === 'blog' && (
+              <BlogList 
+                onSelectPost={(slug) => {
+                  setBlogSlug(slug);
+                  setCurrentPage('blog-article');
+                }}
+                onBack={() => setCurrentPage('home')}
+              />
+            )}
+            {currentPage === 'blog-article' && (
+              <BlogArticle 
+                slug={blogSlug}
+                onBack={() => setCurrentPage('home')}
+                onBackToList={() => setCurrentPage('blog')}
+              />
+            )}
           </div>
         )}
 

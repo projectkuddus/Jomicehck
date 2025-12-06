@@ -15,8 +15,10 @@ import {
   X,
   DollarSign,
   CheckCircle,
-  XCircle
+  XCircle,
+  BookOpen
 } from 'lucide-react';
+import AdminBlogManager from './AdminBlogManager';
 
 interface UserProfile {
   id: string;
@@ -74,6 +76,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [showBlogManager, setShowBlogManager] = useState(false);
 
   // Admin password from environment variable (set in Vercel)
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'jomicheck2024admin';
@@ -342,7 +345,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setShowBlogManager(true)}
+            className="px-4 py-2 font-semibold text-sm transition-colors text-green-600 hover:text-green-700 ml-auto"
+          >
+            <BookOpen size={16} className="inline mr-2" />
+            📚 Blog Manager
+          </button>
         </div>
+
+        {/* Blog Manager Modal */}
+        {showBlogManager && (
+          <AdminBlogManager onClose={() => setShowBlogManager(false)} />
+        )}
 
         {/* Stats Cards */}
         {stats && (

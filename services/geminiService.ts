@@ -61,6 +61,14 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     return results[0];
   }
 
+  // Aggregate all results FIRST (before using them)
+  const allGoodPoints = new Set<string>();
+  const allBadPoints = new Set<string>();
+  const allCriticalIssues = new Set<string>();
+  const allMissingInfo = new Set<string>();
+  const allNextSteps = new Set<string>();
+  const allTimelineEvents: Array<{ date: string; event: string }> = [];
+
   // CRITICAL CHECK: Detect if different batches analyzed different deeds
   // Compare deed numbers, dates, and locations from summaries
   const deedIdentifiers = results.map(r => ({
@@ -82,14 +90,6 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     console.warn('⚠️ CRITICAL: Multiple different deeds detected in analysis!');
     allCriticalIssues.add('⚠️ সতর্কতা: একাধিক ভিন্ন দলিল একসাথে আপলোড করা হয়েছে। এটি অত্যন্ত ঝুঁকিপূর্ণ। প্রতিটি দলিল আলাদাভাবে বিশ্লেষণ করা উচিত। ভিন্ন দলিল একসাথে বিশ্লেষণ করলে ভুল ফলাফল পাওয়া যায় যা আইনি সমস্যা সৃষ্টি করতে পারে।');
   }
-
-  // Aggregate all results
-  const allGoodPoints = new Set<string>();
-  const allBadPoints = new Set<string>();
-  const allCriticalIssues = new Set<string>();
-  const allMissingInfo = new Set<string>();
-  const allNextSteps = new Set<string>();
-  const allTimelineEvents: Array<{ date: string; event: string }> = [];
 
   let totalRiskScore = 0;
   let maxRiskLevel: AnalysisResult['riskLevel'] = 'Safe';

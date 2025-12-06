@@ -33,7 +33,9 @@ const analyzeBatch = async (
   };
 
   // Use different endpoint based on tier
-  const endpoint = tier === 'pro' ? '/api/analyze-pro' : '/api/analyze';
+  // PRO uses GPT-4o (state-of-the-art, lowest hallucination)
+  // PLUS uses Gemini (faster, cheaper)
+  const endpoint = tier === 'pro' ? '/api/analyze-gpt4o' : '/api/analyze';
   
   console.log(`🔷 Using ${tier.toUpperCase()} analysis (${endpoint})`);
 

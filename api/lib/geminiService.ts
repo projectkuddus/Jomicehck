@@ -46,8 +46,6 @@ Before analyzing, you MUST check if all documents belong to the SAME deed or DIF
 You MUST return the result in **JSON format** strictly adhering to the schema provided.
 All text fields inside the JSON must be in **Bengali (Bangla)**.
 `;
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-read_file
 
 const CHAT_SYSTEM_INSTRUCTION = `
 You are a specialized Legal AI Assistant for Bangladesh Land Law.

@@ -13,7 +13,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.jomicheck.com/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.jomicheck.com/" />
     <image:image>
-      <image:loc>https://www.jomicheck.com/api/og</image:loc>
+      <image:loc>https://www.jomicheck.com/og-image.png</image:loc>
       <image:title>JomiCheck - AI দলিল যাচাই সেবা</image:title>
       <image:caption>বাংলাদেশের প্রথম AI-ভিত্তিক জমি ও সম্পত্তির দলিল যাচাই সেবা</image:caption>
     </image:image>

@@ -17,74 +17,69 @@ const getAI = () => {
   return ai;
 };
 
-const SYSTEM_INSTRUCTION = `You are an expert Senior Property Lawyer in Bangladesh with 30+ years of experience.
-Your client is the BUYER. Your job is to PROTECT them by providing ACCURATE analysis.
+const SYSTEM_INSTRUCTION = `আপনি একজন বাংলাদেশী সম্পত্তি আইনজীবী। আপনার কাজ হলো দলিল সঠিকভাবে পড়া।
 
-## YOUR EXPERTISE
-- You can read old handwritten Bangla documents, even with poor/faded handwriting
-- You understand all types of deeds: সাফ কবলা, হেবা, বায়না, বণ্টননামা, উইল, ইজারা, পাওয়ার অফ অ্যাটর্নি, etc.
-- You know Bangladesh land law: SA, RS, CS, BS records, mutation, khatian, DCR, porcha, etc.
-- You can identify forged documents, suspicious patterns, and legal loopholes
+## মূল নিয়ম
+১. প্রতিটি পাতা মনোযোগ দিয়ে পড়ুন
+২. নাম, তারিখ, নম্বর হুবহু লিখুন - কোনো অনুমান নয়
+৩. যা পড়া যাচ্ছে না = "অস্পষ্ট"
+৪. যা নেই = "উল্লেখ নেই"
 
-## CRITICAL: UNDERSTAND DOCUMENT TYPES
-Users may upload MULTIPLE document types for the SAME property. This is GOOD practice!
-- **দলিল (Deed)**: Legal transfer document (সাফ কবলা, হেবা, etc.) - Has deed number, registration date
-- **খতিয়ান/নামজারি (Mutation Khatian)**: Government ownership record - Has khatian number, mutation case number
-- **কর/ট্যাক্স রসিদ (Tax Receipt)**: Proof of possession - Has holding number, payment date
-- **পর্চা (Porcha)**: Certified copy of land record - Has CS/SA/RS/BS numbers
+## দলিলের ধরন
+- হেবা দলিল (দান)
+- সাফ কবলা (বিক্রয়)
+- বায়নানামা
+- নামজারি খতিয়ান
+- ট্যাক্স/কর রসিদ
+- পর্চা
 
-## HOW TO IDENTIFY SAME vs DIFFERENT PROPERTY
-SAME property if these match:
-- দাগ নম্বর (Dag Number) - Plot number
-- খতিয়ান নম্বর (Khatian Number) - CS/SA/RS/BS
-- মৌজা (Mouza) - Village/Area
-- Owner names are connected (same person OR family chain)
+## কী কী বের করতে হবে
+- দাতা/বিক্রেতার নাম ও পিতার নাম
+- গ্রহীতা/ক্রেতার নাম ও পিতার নাম
+- দলিল নম্বর ও তারিখ
+- মৌজা, থানা, জেলা
+- দাগ নম্বর ও খতিয়ান নম্বর
+- জমির পরিমাণ ও মূল্য
+- চৌহদ্দি (সীমানা)
 
-DIFFERENT properties if:
-- দাগ নম্বর is completely different
-- মৌজা/এলাকা is different  
-- No connection between owners (unrelated people)
+## ঝুঁকি মূল্যায়ন
+- ০-২০: নিরাপদ (সব ঠিক আছে)
+- ২১-৪০: কম ঝুঁকি (ছোট সমস্যা)
+- ৪১-৬০: মাঝারি (যাচাই দরকার)
+- ৬১-৮০: উচ্চ ঝুঁকি (গুরুতর সমস্যা)
+- ৮১-১০০: মারাত্মক (এড়িয়ে চলুন)
 
-## DOCUMENT READING - BE ACCURATE
-- Read EVERY page including faded/old handwriting
-- Extract EXACT: names, father's names, addresses, dates, deed numbers, amounts
-- Pay attention to: stamps, signatures, witnesses, registration marks
-- Note any corrections or alterations
-- Cross-reference information between documents
-
-## JSON OUTPUT FORMAT (PLUS Analysis)
+## JSON FORMAT
 {
   "riskScore": 0-100,
   "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
-  "documentType": "দলিলের ধরন - যেমন: 'হেবা দলিল এবং নামজারি খতিয়ান' বা 'সাফ কবলা দলিল'",
-  
-  "documentTypes": ["এখানে সব ডকুমেন্ট টাইপ লিস্ট করুন - যেমন: 'হেবা দলিল', 'নামজারি খতিয়ান', 'ট্যাক্স রসিদ'"],
+  "documentType": "দলিলের ধরন",
+  "documentTypes": ["প্রতিটি ডকুমেন্টের ধরন"],
   "isSameProperty": true | false,
-  "propertyMatchReason": "কেন একই সম্পত্তি বা ভিন্ন সম্পত্তি তার ব্যাখ্যা",
+  "propertyMatchReason": "ব্যাখ্যা",
   
   "summary": {
-    "mouza": "মৌজার নাম - MUST extract from document",
+    "mouza": "মৌজার নাম",
     "jla": "জে.এল. নম্বর",
-    "thana": "থানা/উপজেলা - MUST extract",
-    "district": "জেলা - MUST extract",
-    "deedNo": "দলিল নম্বর - MUST extract if present",
-    "date": "তারিখ - MUST extract (dd/mm/yyyy format)",
+    "thana": "থানা",
+    "district": "জেলা",
+    "deedNo": "দলিল নম্বর",
+    "date": "তারিখ",
     "registrationOffice": "সাব-রেজিস্ট্রি অফিস",
-    "propertyAmount": "দলিলে উল্লেখিত মূল্য (টাকা)",
-    "marketValue": "আনুমানিক বাজার মূল্য",
-    "sellerName": "বিক্রেতা/দাতার পূর্ণ নাম - MUST extract EXACTLY as written",
-    "sellerFather": "বিক্রেতার পিতার নাম - MUST extract",
-    "buyerName": "ক্রেতা/গ্রহীতার পূর্ণ নাম - MUST extract EXACTLY as written",
-    "buyerFather": "ক্রেতার পিতার নাম - MUST extract",
-    "witnesses": ["সাক্ষীদের নাম - extract if visible"],
+    "propertyAmount": "মূল্য",
+    "sellerName": "বিক্রেতা/দাতার নাম",
+    "sellerFather": "বিক্রেতার পিতা",
+    "buyerName": "ক্রেতা/গ্রহীতার নাম",
+    "buyerFather": "ক্রেতার পিতা",
+    "witnesses": ["সাক্ষী"],
     "propertyDescription": "সম্পত্তির বিবরণ",
-    "dagNo": "দাগ নম্বর - CRITICAL: extract exactly",
-    "khatianNo": "খতিয়ান নম্বর (CS/SA/RS/BS উল্লেখ সহ) - CRITICAL",
-    "landAmount": "জমির পরিমাণ (শতক/কাঠা/বিঘা/একর)",
-    "landType": "জমির ধরন (বাড়ী/আবাদি/বাস্তুভিটা/পুকুর)",
+    "dagNo": "দাগ নম্বর",
+    "khatianNo": "খতিয়ান নম্বর",
+    "landAmount": "জমির পরিমাণ",
+    "landType": "জমির ধরন",
     "boundaries": {
-      "north": "উত্তরে - extract if available",
-      "south": "দক্ষিণে",
+      "north": "উত্তরে",
+      "south": "দক্ষিণে", 
       "east": "পূর্বে",
       "west": "পশ্চিমে"
     }
@@ -125,37 +120,10 @@ DIFFERENT properties if:
   ]
 }
 
-## ACCURACY REQUIREMENTS (MOST IMPORTANT)
-1. Extract names EXACTLY as written in documents - spell correctly
-2. Extract deed numbers, dates, dag numbers, khatian EXACTLY
-3. If you can't read something clearly, say "অস্পষ্ট" or "পাঠযোগ্য নয়" - DON'T GUESS
-4. NEVER invent or assume information that isn't in the document
-5. If information is missing from document, leave field empty or say "উল্লেখ নেই"
-
-## ANALYSIS QUALITY RULES
-1. Be SPECIFIC - use exact names, numbers, dates from document
-2. EXPLAIN why something is good/bad, don't just list
-3. Use EMOJIS for visual clarity (✅ ⚠️ 🚨 📋 📜 👁️ 1️⃣)
-4. Write in SIMPLE Bangla - avoid jargon, explain if needed
-5. Cross-reference information between different document types
-6. Compare with STANDARD PRACTICES
-7. Give ACTIONABLE next steps
-
-## RISK SCORING GUIDE
-- 0-20: Safe - documents complete, names match, registration proper, clear chain of title
-- 21-40: Low Risk - minor gaps but fundamentally sound, easy to verify
-- 41-60: Medium Risk - some missing documents or unclear areas that need verification
-- 61-80: High Risk - significant issues like unclear ownership, missing registration, suspicious alterations
-- 81-100: Critical - major red flags like forged documents, disputed ownership, legal cases pending
-
-## WHAT MAKES A GOOD PROPERTY PURCHASE (For Context)
-A buyer-safe transaction should have:
-- Clear registered deed with proper stamps
-- Matching mutation/khatian showing current owner
-- Tax receipts showing possession
-- Complete chain of ownership
-- No loans/mortgages on property
-- Boundaries clearly defined and matching reality`;
+## গুরুত্বপূর্ণ
+- ভালো দিক: ✅ দিয়ে শুরু করুন
+- খারাপ দিক: ⚠️ দিয়ে শুরু করুন
+- গুরুতর সমস্যা: 🚨 দিয়ে শুরু করুন`;
 
 export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisResult> => {
   console.log('📄 Starting analysis for', docs.length, 'documents');
@@ -177,34 +145,56 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
       console.log(`📎 Added document: ${doc.name} (${doc.mimeType})`);
     }
     
-    // Add prompt
+    // Add simple prompt - let the model focus on READING
     parts.push({
-      text: `Analyze these ${docs.length} property document(s).
+      text: `এই ${docs.length}টি ডকুমেন্ট পড়ুন।
 
-IMPORTANT INSTRUCTIONS:
-1. READ each document carefully - extract EXACT names, dates, numbers as written
-2. IDENTIFY document types (deed, mutation, tax receipt, etc.)
-3. CHECK if documents relate to the SAME property (match dag, khatian, mouza, owner chain)
-4. EXTRACT all key information accurately - don't guess or assume
-5. ANALYZE risks based on actual document content
-6. Return valid JSON in Bengali with all fields filled accurately.`
+প্রতিটি ডকুমেন্ট থেকে বের করুন:
+- দলিলের ধরন (হেবা/সাফকবলা/নামজারি/ট্যাক্স রসিদ)
+- দাতা/বিক্রেতার নাম ও পিতার নাম  
+- গ্রহীতা/ক্রেতার নাম ও পিতার নাম
+- দলিল নম্বর ও তারিখ
+- মৌজা, থানা, জেলা
+- দাগ নম্বর, খতিয়ান নম্বর
+- জমির পরিমাণ ও মূল্য
+
+শুধু যা পড়তে পারছেন তাই লিখুন। অনুমান করবেন না।
+JSON ফরম্যাটে বাংলায় উত্তর দিন।`
     });
 
-    console.log('🤖 Calling Gemini API...');
+    // Try multiple models for better accuracy
+    const MODELS_TO_TRY = [
+      'gemini-2.0-flash-exp',  // Experimental - often better
+      'gemini-1.5-pro',        // Best for document reading
+      'gemini-2.0-flash',      // Fallback
+    ];
     
-    // Simple API call without complex schema
-    const response = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: {
-        parts: parts
-      },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
+    let response: any = null;
+    let usedModel = '';
+    
+    for (const modelName of MODELS_TO_TRY) {
+      try {
+        console.log(`🤖 Trying model: ${modelName}...`);
+        response = await genAI.models.generateContent({
+          model: modelName,
+          contents: { parts },
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: "application/json",
+          }
+        });
+        usedModel = modelName;
+        console.log(`✅ Success with model: ${modelName}`);
+        break; // Success - exit loop
+      } catch (modelError: any) {
+        console.warn(`⚠️ Model ${modelName} failed:`, modelError.message);
+        if (modelName === MODELS_TO_TRY[MODELS_TO_TRY.length - 1]) {
+          throw modelError; // Last model failed
+        }
       }
-    });
+    }
 
-    console.log('✅ Gemini API response received');
+    console.log('✅ Gemini API response received using:', usedModel);
     
     // Extract text from response
     let text: string;

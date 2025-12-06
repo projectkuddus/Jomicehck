@@ -3,44 +3,29 @@ import { GoogleGenAI } from '@google/genai';
 import { DocumentInput } from './lib/types.js';
 import { rateLimit, getClientId } from './rate-limit.js';
 
-// PRO Analysis - Premium, detailed, multi-layer analysis with expert-level insights
-const SYSTEM_INSTRUCTION = `You are an EXPERT Senior Property Lawyer in Bangladesh with 30+ years of courtroom experience.
-Your client is the BUYER. Your MISSION is to provide ACCURATE, DETAILED analysis to help them make informed decisions.
+// PRO Analysis - ACCURACY FIRST approach
+const SYSTEM_INSTRUCTION = `আপনি একজন বাংলাদেশী সম্পত্তি আইনজীবী। আপনার কাজ হলো দলিলগুলো সঠিকভাবে পড়া এবং তথ্য বের করা।
 
-## YOUR EXPERTISE (PRO LEVEL - FORENSIC ANALYSIS)
-- Master at reading old/damaged/faded handwritten Bangla documents
-- Expert in ALL deed types: সাফ কবলা, হেবা, বায়না, বণ্টননামা, উইল, ইজারা, পাওয়ার অফ অ্যাটর্নি, আমমোক্তারনামা
-- Deep knowledge of Bangladesh land records: SA, RS, CS, BS, mutation, khatian, DCR, porcha, নামজারি, খারিজ
-- Trained to detect: forged signatures, document alterations, suspicious patterns, legal loopholes
-- Experienced with land disputes, ভূমি মামলা, দখল বিরোধ, উত্তরাধিকার সমস্যা
+## গুরুত্বপূর্ণ নির্দেশনা
+১. প্রতিটি পাতা ভালো করে পড়ুন
+২. নাম, তারিখ, নম্বর হুবহু লিখুন - অনুমান করবেন না
+৩. যা স্পষ্ট পড়া যায় না তা "অস্পষ্ট" লিখুন
+৪. যা দলিলে নেই তা "উল্লেখ নেই" লিখুন
 
-## CRITICAL: UNDERSTAND DOCUMENT CHAIN
-Users often upload MULTIPLE related documents for the SAME property:
-- **দলিল (Deed)**: সাফ কবলা, হেবা - Main transfer document with deed number
-- **খতিয়ান (Mutation/Khatian)**: Government ownership record - Has khatian/mutation case number  
-- **ট্যাক্স রসিদ (Tax Receipt)**: Proof of possession - Has holding number
-- **পর্চা (Porcha)**: Certified land record copy - Has CS/SA/RS/BS numbers
+## দলিলের ধরন চিহ্নিত করুন
+- দলিল (সাফ কবলা, হেবা, বায়না, ইত্যাদি)
+- নামজারি খতিয়ান
+- ট্যাক্স রসিদ
+- পর্চা
 
-These are SUPPORTING documents, NOT different deeds! Check if SAME property by:
-- Same দাগ নম্বর (Dag/Plot number)
-- Same খতিয়ান নম্বর (Khatian)
-- Same মৌজা (Mouza/Area)
-- Connected owner chain (same person or family transfer like husband→wife)
-
-## FORENSIC ANALYSIS APPROACH
-For EVERY document:
-1. IDENTIFY document type first (Deed/Mutation/Tax/Porcha)
-2. EXTRACT exact information - names, dates, numbers as written
-3. CROSS-REFERENCE between documents - do they match?
-4. CHECK for authenticity markers - stamps, seals, signatures
-5. NOTE any alterations, corrections, or suspicious elements
-
-## PAGE-BY-PAGE DEEP DIVE
-For EACH page analyze:
-- What TYPE of page is this? (Cover/Schedule/Witness/Signature/Map/Receipt)
-- What CRITICAL INFO is on this page? (Extract exact text - NAMES, DATES, NUMBERS)
-- Any PROBLEMS on this specific page?
-- READABILITY score - how clear is the writing?
+## তথ্য বের করুন (যা পড়তে পারেন শুধু সেটাই)
+- দাতা/বিক্রেতার নাম ও পিতার নাম
+- গ্রহীতা/ক্রেতার নাম ও পিতার নাম  
+- দলিল নম্বর ও তারিখ
+- মৌজা, থানা, জেলা
+- দাগ নম্বর, খতিয়ান নম্বর
+- জমির পরিমাণ ও মূল্য
+- চৌহদ্দি (উত্তর, দক্ষিণ, পূর্ব, পশ্চিম)
 
 ## PRO JSON OUTPUT FORMAT (FOLLOW EXACTLY)
 {
@@ -309,40 +294,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     parts.push({
-      text: `PRO ANALYSIS REQUEST - ${documents.length} document(s)
+      text: `এই ${documents.length}টি ডকুমেন্ট পড়ুন এবং JSON এ তথ্য দিন।
 
-CRITICAL INSTRUCTIONS:
-1. IDENTIFY each document type (deed, mutation, tax receipt, etc.)
-2. CHECK if all documents relate to SAME property (match dag, khatian, mouza)
-3. EXTRACT information ACCURATELY - exact names, dates, numbers as written
-4. ANALYZE each page in pageByPageAnalysis with specific findings
-5. CROSS-REFERENCE information between documents
-6. Provide risk breakdown by category (legal, ownership, financial, procedural)
-7. Give expert verdict with clear Buy/Don't Buy recommendation
+প্রতিটি ডকুমেন্ট থেকে বের করুন:
+- দলিলের ধরন কী? (হেবা/সাফকবলা/নামজারি/ট্যাক্স রসিদ)
+- দাতা/বিক্রেতার নাম ও পিতার নাম
+- গ্রহীতা/ক্রেতার নাম ও পিতার নাম
+- দলিল নম্বর ও তারিখ
+- মৌজা, থানা, জেলা
+- দাগ নম্বর, খতিয়ান নম্বর
+- জমির পরিমাণ ও মূল্য
+- চৌহদ্দি
 
-ACCURACY RULES:
-- If you can read it clearly, write it EXACTLY as in document
-- If handwriting is unclear, mark as "অস্পষ্ট"
-- If info doesn't exist in document, say "উল্লেখ নেই"
-- NEVER guess or assume information
-
-Return ONLY valid JSON. Write everything in Bengali.`
+সতর্কতা: শুধুমাত্র যা পড়তে পারছেন সেটাই লিখুন। অনুমান করবেন না।`
     });
 
-    // PRO uses the same model but with detailed prompt and rich output format
-    // The PRO value comes from: detailed system instruction + rich JSON schema + premium UI
-    console.log('🤖 Calling Gemini for PRO deep analysis...');
+    // Try multiple models for best accuracy
+    const MODELS_TO_TRY = [
+      'gemini-2.0-flash-exp',  // Experimental - often better
+      'gemini-1.5-pro',        // Best for document reading
+      'gemini-2.0-flash',      // Fallback
+    ];
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
+    let response: any = null;
+    let usedModel = '';
+    
+    for (const modelName of MODELS_TO_TRY) {
+      try {
+        console.log(`🤖 Trying model: ${modelName}...`);
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: { parts },
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: "application/json",
+          }
+        });
+        usedModel = modelName;
+        console.log(`✅ Success with model: ${modelName}`);
+        break; // Success - exit loop
+      } catch (modelError: any) {
+        console.warn(`⚠️ Model ${modelName} failed:`, modelError.message);
+        if (modelName === MODELS_TO_TRY[MODELS_TO_TRY.length - 1]) {
+          throw modelError; // Last model failed - throw error
+        }
+        // Try next model
       }
-    });
+    }
     
-    console.log('✅ PRO Analysis response received');
+    console.log('✅ PRO Analysis response received using:', usedModel);
     
     let text: string;
     if (response && typeof response === 'object' && 'text' in response) {

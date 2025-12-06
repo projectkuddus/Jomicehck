@@ -190,6 +190,21 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
           </div>
         )}
 
+        {/* PRO: Legal Advice */}
+        {isPro && report.legalAdvice && (
+          <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-200 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <Gavel size={24} className="text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-indigo-800 mb-2">আইনি পরামর্শ</h3>
+                <p className="text-indigo-900 bangla-text leading-relaxed">{report.legalAdvice}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Risk Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           
@@ -439,22 +454,22 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
                     )}
                   </div>
                   
-                  {/* Financial */}
+                  {/* Documentation */}
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <Banknote size={18} className="text-amber-600" />
-                      <span className="font-bold text-slate-800">আর্থিক</span>
+                      <FileText size={18} className="text-amber-600" />
+                      <span className="font-bold text-slate-800">ডকুমেন্ট</span>
                     </div>
-                    <div className="text-3xl font-extrabold text-amber-600 mb-2">{report.riskBreakdown.financial?.score || 0}</div>
+                    <div className="text-3xl font-extrabold text-amber-600 mb-2">{report.riskBreakdown.documentation?.score || report.riskBreakdown.financial?.score || 0}</div>
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
                       <div 
                         className="h-full bg-amber-600 rounded-full transition-all"
-                        style={{ width: `${report.riskBreakdown.financial?.score || 0}%` }}
+                        style={{ width: `${report.riskBreakdown.documentation?.score || report.riskBreakdown.financial?.score || 0}%` }}
                       />
                     </div>
-                    {report.riskBreakdown.financial?.issues?.length > 0 && (
+                    {(report.riskBreakdown.documentation?.issues?.length > 0 || report.riskBreakdown.financial?.issues?.length > 0) && (
                       <ul className="text-xs text-slate-600 space-y-1">
-                        {report.riskBreakdown.financial.issues.slice(0, 2).map((issue, idx) => (
+                        {(report.riskBreakdown.documentation?.issues || report.riskBreakdown.financial?.issues || []).slice(0, 2).map((issue: string, idx: number) => (
                           <li key={idx} className="flex items-start gap-1 bangla-text">
                             <span className="text-amber-500 mt-0.5">•</span> {issue}
                           </li>
@@ -463,22 +478,22 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
                     )}
                   </div>
                   
-                  {/* Procedural */}
+                  {/* Possession */}
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <ClipboardList size={18} className="text-purple-600" />
-                      <span className="font-bold text-slate-800">পদ্ধতিগত</span>
+                      <MapPin size={18} className="text-purple-600" />
+                      <span className="font-bold text-slate-800">দখল</span>
                     </div>
-                    <div className="text-3xl font-extrabold text-purple-600 mb-2">{report.riskBreakdown.procedural?.score || 0}</div>
+                    <div className="text-3xl font-extrabold text-purple-600 mb-2">{report.riskBreakdown.possession?.score || report.riskBreakdown.procedural?.score || 0}</div>
                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
                       <div 
                         className="h-full bg-purple-600 rounded-full transition-all"
-                        style={{ width: `${report.riskBreakdown.procedural?.score || 0}%` }}
+                        style={{ width: `${report.riskBreakdown.possession?.score || report.riskBreakdown.procedural?.score || 0}%` }}
                       />
                     </div>
-                    {report.riskBreakdown.procedural?.issues?.length > 0 && (
+                    {(report.riskBreakdown.possession?.issues?.length > 0 || report.riskBreakdown.procedural?.issues?.length > 0) && (
                       <ul className="text-xs text-slate-600 space-y-1">
-                        {report.riskBreakdown.procedural.issues.slice(0, 2).map((issue, idx) => (
+                        {(report.riskBreakdown.possession?.issues || report.riskBreakdown.procedural?.issues || []).slice(0, 2).map((issue: string, idx: number) => (
                           <li key={idx} className="flex items-start gap-1 bangla-text">
                             <span className="text-purple-500 mt-0.5">•</span> {issue}
                           </li>

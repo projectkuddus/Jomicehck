@@ -6,6 +6,10 @@ export interface FileWithPreview {
   base64Data?: string;
   mimeType: string;
   estimatedPages: number;
+  extractedText?: string; // Text extracted directly from PDF (more reliable than OCR)
+  originalPdfName?: string;
+  pageNumber?: number;
+  totalPages?: number;
 }
 
 export interface AnalysisResult {
@@ -85,12 +89,24 @@ export interface AnalysisResult {
       issues: string[];
       details: string;
     };
-    financial: {
+    // New fields
+    documentation?: {
       score: number;
       issues: string[];
       details: string;
     };
-    procedural: {
+    possession?: {
+      score: number;
+      issues: string[];
+      details: string;
+    };
+    // Legacy fields for backward compatibility
+    financial?: {
+      score: number;
+      issues: string[];
+      details: string;
+    };
+    procedural?: {
       score: number;
       issues: string[];
       details: string;
@@ -187,6 +203,9 @@ export interface AnalysisResult {
     whereToGet?: string;
     priority: 'Essential' | 'Recommended' | 'Optional';
   }[];
+
+  // PRO: Legal advice
+  legalAdvice?: string;
 
   // Standard fields
   goodPoints: string[];

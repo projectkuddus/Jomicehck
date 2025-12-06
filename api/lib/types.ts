@@ -4,6 +4,7 @@ export interface DocumentInput {
   name: string;
   mimeType: string;
   data: string; // Base64 encoded data (without data URL prefix)
+  extractedText?: string; // Text directly extracted from PDF (more reliable than OCR)
 }
 
 // Base analysis result (shared by PLUS and PRO)
@@ -84,12 +85,24 @@ export interface AnalysisResult {
       issues: string[];
       details: string;
     };
-    financial: {
+    // New fields
+    documentation?: {
       score: number;
       issues: string[];
       details: string;
     };
-    procedural: {
+    possession?: {
+      score: number;
+      issues: string[];
+      details: string;
+    };
+    // Legacy fields for backward compatibility
+    financial?: {
+      score: number;
+      issues: string[];
+      details: string;
+    };
+    procedural?: {
       score: number;
       issues: string[];
       details: string;
@@ -186,6 +199,9 @@ export interface AnalysisResult {
     whereToGet?: string;
     priority: 'Essential' | 'Recommended' | 'Optional';
   }[];
+
+  // PRO: Legal advice
+  legalAdvice?: string;
 
   // Standard fields
   goodPoints: string[];

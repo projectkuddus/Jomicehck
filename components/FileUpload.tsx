@@ -123,7 +123,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
       }];
     }
     
-    // Create a FileWithPreview for each page
+    // Log if we have extracted text
+    if (result.extractedText) {
+      console.log(`📝 Full PDF text extracted: ${result.extractedText.length} characters`);
+    }
+    
+    // Create a FileWithPreview for each page, including extracted text
     return result.pages.map((page) => ({
       id: Math.random().toString(36).substr(2, 9),
       file: new File([file], `${file.name}-page-${page.pageNumber}.jpg`, { type: 'image/jpeg' }),
@@ -131,6 +136,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
       base64Data: page.imageData,
       mimeType: 'image/jpeg',
       estimatedPages: 1,
+      extractedText: page.extractedText, // Include extracted text per page
       originalPdfName: file.name,
       pageNumber: page.pageNumber,
       totalPages: result.totalPages

@@ -1,31 +1,37 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
 import { rateLimit, getClientId } from './rate-limit.js';
 
-// PLUS Analysis - Uses GPT-4o-mini (fast, accurate, cost-effective)
-// No more Gemini hallucinations
+// PLUS Analysis - For CLEAR documents with readable text
+// Uses Gemini 1.5 Flash (fast, excellent for Bengali) + PDF text extraction
+// NO Vision OCR (not needed for clear documents)
 
-const SYSTEM_INSTRUCTION = `আপনি একজন অভিজ্ঞ বাংলাদেশী সম্পত্তি আইনজীবী। আপনার কাজ হলো দলিল সঠিকভাবে পড়া।
+const SYSTEM_INSTRUCTION = `আপনি একজন অভিজ্ঞ বাংলাদেশী সম্পত্তি আইনজীবী। আপনার ক্লায়েন্ট বড় অঙ্কের টাকা দিয়ে জমি কিনতে যাচ্ছেন। আপনার বিশ্লেষণ তাদের সঠিক সিদ্ধান্ত নিতে সাহায্য করবে।
 
-## গুরুত্বপূর্ণ নিয়ম
+## দলিল পড়ার নিয়ম
 ১. প্রতিটি পাতা মনোযোগ দিয়ে পড়ুন
-২. নাম, তারিখ, নম্বর হুবহু লিখুন - কোনো অনুমান নয়
-৩. যা পড়া যাচ্ছে না = "অস্পষ্ট"
-৪. যা নেই = "উল্লেখ নেই"
+২. নাম, তারিখ, নম্বর - সব হুবহু লিখুন
+৩. যা পড়া যাচ্ছে তা লিখুন, অনুমান করবেন না
+৪. সম্পূর্ণ অপাঠ্য হলে "অস্পষ্ট" লিখুন
 
-## দলিলের ধরন
-- হেবা দলিল (দান) - স্বামী-স্ত্রী বা আত্মীয়দের মধ্যে
-- সাফ কবলা (বিক্রয়)
-- বায়নানামা
-- নামজারি খতিয়ান
-- ট্যাক্স/কর রসিদ
+## দলিলের ধরন ও গুরুত্ব
+- সাফ কবলা: বিক্রয় দলিল - মালিকানা হস্তান্তর
+- হেবা দলিল: দান - আত্মীয়দের মধ্যে
+- বায়নানামা: চুক্তি মাত্র - এখনো মালিকানা হস্তান্তর হয়নি!
+- নামজারি: সরকারি রেকর্ড - অত্যন্ত গুরুত্বপূর্ণ
+- ট্যাক্স রসিদ: দখলের প্রমাণ
 
-## ঝুঁকি মূল্যায়ন
-- ০-২০: নিরাপদ
-- ২১-৪০: কম ঝুঁকি
-- ৪১-৬০: মাঝারি
-- ৬১-৮০: উচ্চ ঝুঁকি
-- ৮১-১০০: মারাত্মক`;
+## ঝুঁকি মূল্যায়ন (কঠোর মানদণ্ড)
+- ০-২০: নিরাপদ - সব ডকুমেন্ট ঠিক, এগিয়ে যেতে পারেন
+- ২১-৪০: কম ঝুঁকি - ছোট সমস্যা, সমাধানযোগ্য
+- ৪১-৬০: মাঝারি - যাচাই ছাড়া এগোবেন না
+- ৬১-৮০: উচ্চ ঝুঁকি - আইনজীবীর পরামর্শ নিন
+- ৮১-১০০: মারাত্মক - এড়িয়ে চলুন
+
+## গুরুত্বপূর্ণ চেকলিস্ট
+- নামজারি আছে কি?
+- দখল প্রমাণ (ট্যাক্স রসিদ) আছে কি?
+- মালিকানা চেইন স্পষ্ট কি?
+- চৌহদ্দি সঠিক কি?`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -54,21 +60,193 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Invalid request: 'documents' array is required" });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'OpenAI API not configured' });
+    // PLUS: Use Gemini 1.5 Flash (best for Bengali, fast, cost-effective)
+    // Fallback to GPT-4o-mini if Gemini not available
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    
+    if (!geminiKey && !openaiKey) {
+      return res.status(500).json({ error: 'No AI API key configured' });
     }
 
-    console.log('🔷 PLUS Analysis (GPT-4o-mini) starting for', documents.length, 'documents');
-
-    const openai = new OpenAI({ apiKey });
-
-    // Build message content with images
-    const imageContents: OpenAI.ChatCompletionContentPart[] = [];
+    console.log('🔷 PLUS Analysis (Clear Documents) starting for', documents.length, 'documents');
     
+    // Prefer Gemini for Bengali documents
+    if (geminiKey) {
+      try {
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: geminiKey });
+        
+        // Build parts with PDF extracted text (no Vision OCR for PLUS)
+        const extractedTexts: string[] = [];
+        const parts: any[] = [];
+
+        for (let i = 0; i < documents.length; i++) {
+          const doc = documents[i];
+          
+          // Use PDF extracted text if available
+          if (doc.extractedText && doc.extractedText.length > 10) {
+            extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
+            console.log(`📝 Using PDF text for ${doc.name} (${doc.extractedText.length} chars)`);
+          }
+          
+          // Add image
+          const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
+          parts.push({
+            inlineData: {
+              data: base64Data,
+              mimeType: doc.mimeType
+            }
+          });
+        }
+
+        // Add extracted text as context
+        if (extractedTexts.length > 0) {
+          parts.unshift({
+            text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}\n\n---\n\nএই টেক্সট PDF থেকে সরাসরি extract করা। ছবি ও টেক্সট মিলিয়ে সঠিক তথ্য দিন।`
+          });
+        }
+
+        // Add analysis prompt
+        parts.push({
+          text: `PLUS বিশ্লেষণ: ${documents.length}টি ডকুমেন্ট
+
+আপনার ক্লায়েন্ট এই সম্পত্তি কিনতে বড় অঙ্কের টাকা খরচ করতে যাচ্ছেন। সঠিক তথ্য দিন।
+
+প্রতিটি ডকুমেন্ট থেকে বের করুন:
+- দলিলের ধরন: সাফ কবলা / হেবা / বায়না / নামজারি / ট্যাক্স রসিদ?
+- বিক্রেতা/দাতা: পূর্ণ নাম, পিতার নাম
+- ক্রেতা/গ্রহীতা: পূর্ণ নাম, পিতার নাম
+- দলিল নম্বর ও তারিখ
+- মৌজা, থানা, জেলা
+- দাগ নম্বর, খতিয়ান নম্বর (CS/SA/RS/BS)
+- জমির পরিমাণ ও দলিলে উল্লেখিত মূল্য
+- চৌহদ্দি (৪ দিক)
+
+JSON ফরম্যাটে উত্তর দিন:
+{
+  "riskScore": 0-100,
+  "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
+  "documentType": "সব ডকুমেন্টের সারসংক্ষেপ",
+  "documentTypes": ["প্রতিটি ডকুমেন্টের ধরন"],
+  "isSameProperty": true/false,
+  "propertyMatchReason": "দাগ/মৌজা মিলেছে কিনা",
+  "summary": {
+    "mouza": "মৌজার নাম",
+    "thana": "থানা",
+    "district": "জেলা",
+    "deedNo": "দলিল নম্বর",
+    "date": "তারিখ",
+    "propertyAmount": "মূল্য",
+    "sellerName": "বিক্রেতার নাম",
+    "sellerFather": "বিক্রেতার পিতা",
+    "buyerName": "ক্রেতার নাম",
+    "buyerFather": "ক্রেতার পিতা",
+    "dagNo": "দাগ নম্বর",
+    "khatianNo": "খতিয়ান নম্বর",
+    "landAmount": "জমির পরিমাণ",
+    "landType": "জমির ধরন",
+    "boundaries": {"north": "উত্তরে", "south": "দক্ষিণে", "east": "পূর্বে", "west": "পশ্চিমে"}
+  },
+  "goodPoints": ["✅ ভালো দিক"],
+  "badPoints": ["⚠️ সমস্যা"],
+  "criticalIssues": ["🚨 গুরুতর সমস্যা"],
+  "missingInfo": ["📋 যা নেই"],
+  "chainOfTitleAnalysis": "মালিকানার ইতিহাস",
+  "chainOfTitleTimeline": [{"date": "তারিখ", "event": "কী হয়েছিল"}],
+  "buyerProtection": {"verdict": "Buyer Safe" | "Risky" | "Neutral", "score": 0-100, "details": ""},
+  "nextSteps": ["পরবর্তী পদক্ষেপ"]
+}`
+        });
+
+        const result = await ai.models.generateContent({
+          model: 'gemini-1.5-flash', // Fast, excellent for Bengali
+          contents: { parts },
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
+
+        const text = result.text || '';
+        if (text) {
+          let rawResult;
+          try {
+            rawResult = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+          } catch (e) {
+            throw new Error('Invalid JSON from Gemini');
+          }
+
+          const finalResult = {
+            modelUsed: 'gemini-1.5-flash',
+            riskScore: rawResult.riskScore ?? 50,
+            riskLevel: rawResult.riskLevel || 'Medium Risk',
+            documentType: rawResult.documentType || 'দলিল',
+            documentTypes: rawResult.documentTypes || [],
+            isSameProperty: rawResult.isSameProperty ?? true,
+            propertyMatchReason: rawResult.propertyMatchReason || '',
+            summary: {
+              mouza: rawResult.summary?.mouza || '',
+              jla: rawResult.summary?.jla || '',
+              thana: rawResult.summary?.thana || '',
+              district: rawResult.summary?.district || '',
+              deedNo: rawResult.summary?.deedNo || '',
+              date: rawResult.summary?.date || '',
+              registrationOffice: rawResult.summary?.registrationOffice || '',
+              propertyAmount: rawResult.summary?.propertyAmount || '',
+              sellerName: rawResult.summary?.sellerName || '',
+              sellerFather: rawResult.summary?.sellerFather || '',
+              buyerName: rawResult.summary?.buyerName || '',
+              buyerFather: rawResult.summary?.buyerFather || '',
+              dagNo: rawResult.summary?.dagNo || '',
+              khatianNo: rawResult.summary?.khatianNo || '',
+              landAmount: rawResult.summary?.landAmount || '',
+              landType: rawResult.summary?.landType || '',
+              boundaries: rawResult.summary?.boundaries || null,
+            },
+            goodPoints: rawResult.goodPoints || [],
+            badPoints: rawResult.badPoints || [],
+            criticalIssues: rawResult.criticalIssues || [],
+            missingInfo: rawResult.missingInfo || [],
+            chainOfTitleAnalysis: rawResult.chainOfTitleAnalysis || '',
+            chainOfTitleTimeline: rawResult.chainOfTitleTimeline || [],
+            buyerProtection: {
+              verdict: rawResult.buyerProtection?.verdict || 'Neutral',
+              score: rawResult.buyerProtection?.score,
+              details: rawResult.buyerProtection?.details || '',
+            },
+            nextSteps: rawResult.nextSteps || [],
+            verificationChecklist: rawResult.verificationChecklist || [],
+          };
+          
+          console.log('✅ PLUS Analysis completed with Gemini');
+          return res.json(finalResult);
+        }
+      } catch (geminiError: any) {
+        console.warn('⚠️ Gemini failed, falling back to OpenAI:', geminiError.message);
+        // Fall through to OpenAI fallback
+      }
+    }
+
+    // Fallback to OpenAI GPT-4o-mini
+    if (!openaiKey) {
+      return res.status(500).json({ error: 'AI API not configured' });
+    }
+
+    const { default: OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey: openaiKey });
+
+    const imageContents: any[] = [];
+    const extractedTexts: string[] = [];
+
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
       const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
+      
+      if (doc.extractedText && doc.extractedText.length > 10) {
+        extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
+      }
       
       imageContents.push({
         type: "image_url",
@@ -77,63 +255,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           detail: "high"
         }
       });
-      console.log(`📎 Added document ${i + 1}: ${doc.name}`);
+    }
+
+    if (extractedTexts.length > 0) {
+      imageContents.unshift({
+        type: "text",
+        text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}\n\n---\n\nএই টেক্সট PDF থেকে সরাসরি extract করা। ছবি ও টেক্সট মিলিয়ে সঠিক তথ্য দিন。`
+      });
     }
 
     imageContents.push({
       type: "text",
-      text: `এই ${documents.length}টি ডকুমেন্ট বিশ্লেষণ করুন।
-
-প্রতিটি ডকুমেন্ট থেকে বের করুন:
-- দলিলের ধরন
-- দাতা/বিক্রেতার নাম ও পিতার নাম
-- গ্রহীতা/ক্রেতার নাম ও পিতার নাম
-- দলিল নম্বর ও তারিখ
-- মৌজা, থানা, জেলা
-- দাগ নম্বর, খতিয়ান নম্বর
-- জমির পরিমাণ ও মূল্য
-
-শুধু যা পড়তে পারছেন তাই লিখুন।
-
-JSON ফরম্যাটে উত্তর দিন:
-{
-  "riskScore": 0-100,
-  "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
-  "documentType": "দলিলের ধরন",
-  "documentTypes": ["প্রতিটি ডকুমেন্টের ধরন"],
-  "isSameProperty": true/false,
-  "summary": {
-    "mouza": "মৌজা",
-    "thana": "থানা",
-    "district": "জেলা",
-    "deedNo": "দলিল নম্বর",
-    "date": "তারিখ",
-    "propertyAmount": "মূল্য",
-    "sellerName": "দাতা/বিক্রেতার নাম",
-    "sellerFather": "পিতার নাম",
-    "buyerName": "গ্রহীতা/ক্রেতার নাম",
-    "buyerFather": "পিতার নাম",
-    "dagNo": "দাগ নম্বর",
-    "khatianNo": "খতিয়ান নম্বর",
-    "landAmount": "জমির পরিমাণ",
-    "landType": "জমির ধরন",
-    "boundaries": {"north": "", "south": "", "east": "", "west": ""}
-  },
-  "goodPoints": ["✅ ভালো দিক"],
-  "badPoints": ["⚠️ সমস্যা"],
-  "criticalIssues": ["🚨 গুরুতর সমস্যা"],
-  "missingInfo": ["📋 যা নেই"],
-  "chainOfTitleAnalysis": "মালিকানার ইতিহাস",
-  "chainOfTitleTimeline": [{"date": "তারিখ", "event": "কী হয়েছিল"}],
-  "buyerProtection": {"verdict": "Buyer Safe" | "Risky" | "Neutral", "details": ""},
-  "nextSteps": ["পরবর্তী পদক্ষেপ"]
-}`
+      text: `PLUS বিশ্লেষণ: ${documents.length}টি ডকুমেন্ট পড়ুন এবং JSON ফরম্যাটে উত্তর দিন (same format as above)`
     });
 
-    console.log('🤖 Calling GPT-4o-mini...');
-    
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Fast, accurate, cost-effective
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: SYSTEM_INSTRUCTION },
         { role: "user", content: imageContents }
@@ -143,16 +280,13 @@ JSON ফরম্যাটে উত্তর দিন:
       response_format: { type: "json_object" }
     });
 
-    console.log('✅ GPT-4o-mini response received');
-    
     const text = response.choices[0]?.message?.content;
     if (!text) {
-      throw new Error('Empty response from GPT-4o-mini');
+      throw new Error('Empty response from OpenAI');
     }
 
     const rawResult = JSON.parse(text);
-    
-    const result = {
+    const finalResult = {
       modelUsed: 'gpt-4o-mini',
       riskScore: rawResult.riskScore ?? 50,
       riskLevel: rawResult.riskLevel || 'Medium Risk',
@@ -160,7 +294,6 @@ JSON ফরম্যাটে উত্তর দিন:
       documentTypes: rawResult.documentTypes || [],
       isSameProperty: rawResult.isSameProperty ?? true,
       propertyMatchReason: rawResult.propertyMatchReason || '',
-      
       summary: {
         mouza: rawResult.summary?.mouza || '',
         jla: rawResult.summary?.jla || '',
@@ -174,15 +307,12 @@ JSON ফরম্যাটে উত্তর দিন:
         sellerFather: rawResult.summary?.sellerFather || '',
         buyerName: rawResult.summary?.buyerName || '',
         buyerFather: rawResult.summary?.buyerFather || '',
-        witnesses: rawResult.summary?.witnesses || [],
-        propertyDescription: rawResult.summary?.propertyDescription || '',
         dagNo: rawResult.summary?.dagNo || '',
         khatianNo: rawResult.summary?.khatianNo || '',
         landAmount: rawResult.summary?.landAmount || '',
         landType: rawResult.summary?.landType || '',
         boundaries: rawResult.summary?.boundaries || null,
       },
-      
       goodPoints: rawResult.goodPoints || [],
       badPoints: rawResult.badPoints || [],
       criticalIssues: rawResult.criticalIssues || [],
@@ -198,8 +328,8 @@ JSON ফরম্যাটে উত্তর দিন:
       verificationChecklist: rawResult.verificationChecklist || [],
     };
 
-    console.log('✅ PLUS Analysis completed - Risk:', result.riskScore);
-    return res.json(result);
+    console.log('✅ PLUS Analysis completed with OpenAI');
+    return res.json(finalResult);
 
   } catch (error: any) {
     console.error("❌ PLUS Analysis error:", error.message);

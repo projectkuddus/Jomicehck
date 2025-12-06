@@ -32,12 +32,12 @@ const analyzeBatch = async (
     }
   };
 
-  // Both tiers now use OpenAI (no more Gemini hallucinations)
-  // PRO = GPT-4o (best accuracy, state-of-the-art)
+  // PRO = Gemini 3 Pro (BEST for Bengali documents, better than GPT-4o)
   // PLUS = GPT-4o-mini (fast, accurate, cost-effective)
-  const endpoint = tier === 'pro' ? '/api/analyze-gpt4o' : '/api/analyze';
+  // Gemini automatically falls back to GPT-4o if API key not available
+  const endpoint = tier === 'pro' ? '/api/analyze-gemini-pro' : '/api/analyze';
   
-  console.log(`🔷 Using ${tier.toUpperCase()} analysis with OpenAI (${endpoint})`);
+  console.log(`🔷 Using ${tier.toUpperCase()} analysis (${endpoint})`);
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
@@ -214,6 +214,7 @@ export const analyzeDocuments = async (
     console.log(`🚀 Starting ${tier.toUpperCase()} analysis for ${files.length} files`);
     
     // Convert FileWithPreview[] to backend DocumentInput format
+    // Include extracted text if available (from PDF text extraction)
     const allDocuments = files
       .filter(file => file.base64Data)
       .map(file => {
@@ -222,11 +223,20 @@ export const analyzeDocuments = async (
           ? file.base64Data!.split(',')[1] 
           : file.base64Data!;
         
-        return {
+        // Include extracted text for better accuracy (bypasses OCR issues)
+        const docInfo: { name: string; mimeType: string; data: string; extractedText?: string } = {
           name: file.file.name,
           mimeType: file.mimeType,
           data: cleanBase64
         };
+        
+        // Add extracted text if available (significantly improves accuracy for PDFs)
+        if (file.extractedText && file.extractedText.length > 10) {
+          docInfo.extractedText = file.extractedText;
+          console.log(`📝 Including extracted text for ${file.file.name}: ${file.extractedText.substring(0, 100)}...`);
+        }
+        
+        return docInfo;
       });
 
     if (allDocuments.length === 0) {

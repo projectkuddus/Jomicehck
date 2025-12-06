@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onToggleHistory, onOpenAuth
   const navItems = [
     { id: 'how-it-works', label: 'How it works' },
     { id: 'pricing', label: 'Pricing' },
-    { id: 'blog', label: '📚 Guide' },
+    { id: 'blog', label: 'Blog' },
     { id: 'support', label: 'Support' },
   ];
 

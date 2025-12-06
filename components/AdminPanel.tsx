@@ -75,7 +75,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [sortField, setSortField] = useState<'created_at' | 'credits'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [showBlogManager, setShowBlogManager] = useState(false);
 
   // Admin password from environment variable (set in Vercel)
@@ -199,17 +198,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   }, [sortField, sortOrder]);
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    if (!isAuthenticated || !autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchData();
-      setLastRefresh(new Date());
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, autoRefresh]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-BD', {
@@ -280,18 +268,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             <Clock size={12} />
             Last: {lastRefresh.toLocaleTimeString()}
           </div>
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-              autoRefresh 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-slate-700 hover:bg-slate-600 text-white'
-            }`}
-            title={autoRefresh ? 'Auto-refresh enabled (30s)' : 'Auto-refresh disabled'}
-          >
-            <RefreshCcw size={16} className={autoRefresh && !loading ? 'animate-spin' : ''} />
-            {autoRefresh ? 'Auto' : 'Manual'}
-          </button>
           <button
             onClick={() => {
               fetchData();
@@ -407,7 +383,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Payment Transactions</h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Shows all payments with user details. Updates automatically every 30 seconds.
+                  Shows all payments with user details. Click "Refresh Now" to update.
                 </p>
               </div>
               <div className="text-right">
@@ -682,7 +658,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           <h3 className="font-bold text-amber-800 mb-2">Admin Instructions</h3>
           <ul className="text-sm text-amber-700 space-y-2">
             <li><strong>Payment System:</strong> Payments are automatically approved and credits are added instantly. Review payments here to verify transactions in your bKash account.</li>
-            <li><strong>Auto-Refresh:</strong> The panel updates automatically every 30 seconds. Toggle "Auto" button to enable/disable.</li>
+            <li><strong>Refresh:</strong> Click "Refresh Now" button to see latest data.</li>
             <li><strong>New Entries:</strong> New accounts and payments are highlighted with a "NEW" badge for the first 5 minutes.</li>
             <li><strong>Manual Credit Addition:</strong> Go to Supabase Dashboard → Table Editor → profiles → Edit user → Update credits field</li>
             <li><strong>Free Credits:</strong> Users get 5 free credits on signup</li>

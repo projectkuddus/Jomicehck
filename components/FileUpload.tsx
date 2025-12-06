@@ -1,7 +1,8 @@
 
-import React, { useCallback, useRef } from 'react';
-import { Upload, X, FileImage, Plus, FileText, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import React, { useCallback, useRef, useState } from 'react';
+import { Upload, X, FileImage, Plus, FileText, Image as ImageIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { FileWithPreview } from '../types';
+import { convertPdfToImages } from '../utils/pdfToImages';
 
 interface FileUploadProps {
   files: FileWithPreview[];
@@ -13,9 +14,8 @@ const MAX_FILES = 5000;
 const BATCH_SIZE = 50;
 
 // Image compression settings
-const MAX_IMAGE_DIMENSION = 1600; // Max width/height in pixels
-const JPEG_QUALITY = 0.8; // 80% quality - good balance of size and clarity
-const MAX_FILE_SIZE_MB = 2; // Target max size per file after compression
+const MAX_IMAGE_DIMENSION = 1600;
+const JPEG_QUALITY = 0.8;
 
 /**
  * Compress an image file to reduce size while maintaining readability
@@ -30,7 +30,6 @@ const compressImage = async (file: File): Promise<string> => {
       try {
         let { width, height } = img;
         
-        // Scale down if larger than max dimension
         if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
           const ratio = Math.min(MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height);
           width = Math.round(width * ratio);
@@ -40,30 +39,26 @@ const compressImage = async (file: File): Promise<string> => {
         canvas.width = width;
         canvas.height = height;
         
-        // Draw with white background (for transparent PNGs)
         ctx!.fillStyle = '#FFFFFF';
         ctx!.fillRect(0, 0, width, height);
         ctx!.drawImage(img, 0, 0, width, height);
         
-        // Convert to JPEG for better compression
         const compressedBase64 = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
         
         console.log(`🗜️ Compressed: ${file.name} - ${(file.size / 1024).toFixed(0)}KB → ${(compressedBase64.length * 0.75 / 1024).toFixed(0)}KB`);
         
+        URL.revokeObjectURL(img.src);
         resolve(compressedBase64);
       } catch (err) {
         reject(err);
       }
     };
     
-    img.onerror = () => reject(new Error('Failed to load image for compression'));
+    img.onerror = () => reject(new Error('Failed to load image'));
     img.src = URL.createObjectURL(file);
   });
 };
 
-/**
- * Read file as base64 without compression
- */
 const readFileAsBase64 = (file: File): Promise<string> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -72,106 +67,74 @@ const readFileAsBase64 = (file: File): Promise<string> => {
   });
 };
 
-/**
- * Count PDF pages using a simple approach without external worker
- */
-const countPdfPages = async (file: File): Promise<number> => {
-  try {
-    // Read file as ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    // Convert to string for regex search (only first and last 50KB for efficiency)
-    const decoder = new TextDecoder('latin1');
-    const text = decoder.decode(uint8Array);
-    
-    // Method 1: Search for /Count in catalog (most reliable)
-    const countMatch = text.match(/\/Count\s+(\d+)/);
-    if (countMatch) {
-      const count = parseInt(countMatch[1], 10);
-      if (count > 0 && count < 10000) {
-        console.log(`📄 PDF "${file.name}" has ${count} pages (Count method)`);
-        return count;
-      }
-    }
-    
-    // Method 2: Count /Type /Page occurrences
-    const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
-    if (pageMatches && pageMatches.length > 0) {
-      console.log(`📄 PDF "${file.name}" has ${pageMatches.length} pages (Page count method)`);
-      return pageMatches.length;
-    }
-    
-    // Method 3: Estimate from file size (last resort)
-    const fileSizeMB = file.size / (1024 * 1024);
-    const estimatedPages = Math.max(1, Math.ceil(fileSizeMB * 2)); // ~500KB per page estimate
-    console.log(`📄 PDF "${file.name}" estimated ${estimatedPages} pages (size-based)`);
-    return estimatedPages;
-    
-  } catch (error: any) {
-    console.warn(`⚠️ PDF page count failed for ${file.name}:`, error.message);
-    // Conservative fallback
-    return 5;
-  }
-};
-
 const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
 
-  const processFile = async (file: File): Promise<FileWithPreview> => {
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
+  const processImageFile = async (file: File): Promise<FileWithPreview> => {
     const isHeic = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic';
     
     let base64Data: string;
     let mimeType = file.type || (isHeic ? 'image/heic' : 'application/octet-stream');
     
-    // Compress images to reduce payload size
-    if (isImage && !isHeic && file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    // Compress images larger than 500KB
+    if (!isHeic && file.size > 500 * 1024) {
       try {
         base64Data = await compressImage(file);
-        mimeType = 'image/jpeg'; // Compression converts to JPEG
-      } catch (err) {
-        console.warn('⚠️ Compression failed, using original:', err);
-        base64Data = await readFileAsBase64(file);
-      }
-    } else if (isImage && !isHeic) {
-      // Small images: still compress if larger than 500KB
-      if (file.size > 500 * 1024) {
-        try {
-          base64Data = await compressImage(file);
-          mimeType = 'image/jpeg';
-        } catch (err) {
-          base64Data = await readFileAsBase64(file);
-        }
-      } else {
+        mimeType = 'image/jpeg';
+      } catch {
         base64Data = await readFileAsBase64(file);
       }
     } else {
-      // PDFs and HEIC: read as-is
       base64Data = await readFileAsBase64(file);
-    }
-
-    // Preview URL for images
-    let previewUrl: string | null = null;
-    if (isImage && !isHeic) {
-      previewUrl = URL.createObjectURL(file);
-    }
-
-    // Count PDF pages
-    let estimatedPages = 1;
-    if (isPdf) {
-      estimatedPages = await countPdfPages(file);
     }
 
     return {
       id: Math.random().toString(36).substr(2, 9),
       file: file,
-      preview: previewUrl,
+      preview: URL.createObjectURL(file),
       base64Data: base64Data,
       mimeType: mimeType,
-      estimatedPages
+      estimatedPages: 1
     };
+  };
+
+  const processPdfFile = async (file: File): Promise<FileWithPreview[]> => {
+    setProcessingStatus(`Converting PDF: ${file.name}...`);
+    
+    // Convert PDF pages to images
+    const result = await convertPdfToImages(file, (current, total) => {
+      setProcessingStatus(`Converting page ${current}/${total}...`);
+    });
+    
+    if (!result.success || result.pages.length === 0) {
+      // Fallback: send PDF as-is (for small PDFs that fail conversion)
+      console.warn('⚠️ PDF conversion failed, trying direct upload');
+      const base64Data = await readFileAsBase64(file);
+      
+      return [{
+        id: Math.random().toString(36).substr(2, 9),
+        file: file,
+        preview: null,
+        base64Data: base64Data,
+        mimeType: 'application/pdf',
+        estimatedPages: 5 // Conservative estimate
+      }];
+    }
+    
+    // Create a FileWithPreview for each page
+    return result.pages.map((page) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file: new File([file], `${file.name}-page-${page.pageNumber}.jpg`, { type: 'image/jpeg' }),
+      preview: page.imageData, // Use the image data as preview too
+      base64Data: page.imageData,
+      mimeType: 'image/jpeg',
+      estimatedPages: 1,
+      originalPdfName: file.name,
+      pageNumber: page.pageNumber,
+      totalPages: result.totalPages
+    }));
   };
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,35 +142,45 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
     if (!input.files || input.files.length === 0) return;
 
     if (files.length + input.files.length > MAX_FILES) {
-      alert(`System Protection: You can only upload up to ${MAX_FILES} documents at a time.`);
+      alert(`Maximum ${MAX_FILES} files allowed.`);
       input.value = '';
       return;
     }
 
+    setIsProcessing(true);
     const filesToProcess = Array.from(input.files);
     
-    // Process files in batches
-    const batches: File[][] = [];
-    for (let i = 0; i < filesToProcess.length; i += BATCH_SIZE) {
-      batches.push(filesToProcess.slice(i, i + BATCH_SIZE));
-    }
-
-    for (const batch of batches) {
-      try {
-        const batchFiles = await Promise.all(batch.map(processFile));
-        setFiles((prev) => [...prev, ...batchFiles]);
-      } catch (error: any) {
-        console.error('❌ Error processing file batch:', error);
+    try {
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
+        const isPdf = file.type === 'application/pdf';
+        
+        setProcessingStatus(`Processing ${i + 1}/${filesToProcess.length}: ${file.name}`);
+        
+        if (isPdf) {
+          // Convert PDF to images
+          const pdfPages = await processPdfFile(file);
+          setFiles(prev => [...prev, ...pdfPages]);
+        } else {
+          // Process as image
+          const imageFile = await processImageFile(file);
+          setFiles(prev => [...prev, imageFile]);
+        }
       }
+    } catch (error: any) {
+      console.error('❌ Error processing files:', error);
+      alert(`Error processing file: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
+      input.value = '';
     }
-
-    input.value = '';
   }, [files.length, setFiles]);
 
   const removeFile = (id: string) => {
     setFiles((prev) => {
       const fileToRemove = prev.find(f => f.id === id);
-      if (fileToRemove && fileToRemove.preview) {
+      if (fileToRemove && fileToRemove.preview && !fileToRemove.preview.startsWith('data:')) {
         URL.revokeObjectURL(fileToRemove.preview);
       }
       return prev.filter(f => f.id !== id);
@@ -215,10 +188,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
   };
 
   const triggerUpload = () => {
-    if (files.length >= MAX_FILES) {
-      alert(`Maximum limit of ${MAX_FILES} files reached.`);
-      return;
-    }
+    if (files.length >= MAX_FILES || isProcessing) return;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
       fileInputRef.current.click();
@@ -228,14 +198,22 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
   const renderFilePreview = (file: FileWithPreview) => {
     const isPdf = file.mimeType === 'application/pdf';
     const isHeic = file.mimeType === 'image/heic' || file.file.name.toLowerCase().endsWith('.heic');
+    const pageInfo = (file as any).pageNumber ? `Page ${(file as any).pageNumber}/${(file as any).totalPages}` : null;
 
     if (file.preview) {
       return (
-        <img 
-          src={file.preview} 
-          alt="Document Preview" 
-          className="w-full h-full object-cover"
-        />
+        <>
+          <img 
+            src={file.preview} 
+            alt="Document Preview" 
+            className="w-full h-full object-cover"
+          />
+          {pageInfo && (
+            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] py-1 text-center">
+              {pageInfo}
+            </div>
+          )}
+        </>
       );
     }
 
@@ -252,7 +230,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
           {file.file.name}
         </span>
         <span className="text-[10px] text-slate-400 mt-1">
-          {isPdf ? `~${file.estimatedPages} Page${file.estimatedPages !== 1 ? 's' : ''}` : 'HEIC Image'}
+          {isPdf ? `~${file.estimatedPages} Pages` : 'HEIC Image'}
         </span>
       </div>
     );
@@ -267,15 +245,28 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
         className="hidden"
         multiple
         accept="image/png, image/jpeg, image/jpg, image/webp, image/heic, image/heif, application/pdf"
-        disabled={disabled}
+        disabled={disabled || isProcessing}
       />
+
+      {/* Processing overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+            <p className="text-slate-700 font-medium text-center">{processingStatus}</p>
+            <p className="text-slate-500 text-sm text-center">
+              PDFs are converted to images for reliable analysis
+            </p>
+          </div>
+        </div>
+      )}
 
       {files.length === 0 ? (
         <div 
-          onClick={disabled ? undefined : triggerUpload}
+          onClick={disabled || isProcessing ? undefined : triggerUpload}
           className={`
             border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all duration-200
-            ${disabled ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer'}
+            ${disabled || isProcessing ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer'}
           `}
         >
           <div className="bg-slate-100 p-4 rounded-full mb-3">
@@ -286,14 +277,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
             <span className="font-semibold text-brand-600">Tip:</span> Upload a <strong className="text-slate-700">Draft Deed</strong> before signing, or a final signed copy for verification.
           </p>
           <p className="text-xs text-slate-400 mt-3">
-            Supports PDF, JPG, PNG, HEIC (Max {MAX_FILES} files)
+            Supports PDF, JPG, PNG, HEIC • PDFs auto-converted to images
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
             <span>{files.length} / {MAX_FILES} files attached</span>
-            {files.length >= MAX_FILES && <span className="text-amber-600 font-bold flex items-center gap-1"><AlertCircle size={12}/> Limit Reached</span>}
+            {files.length >= MAX_FILES && (
+              <span className="text-amber-600 font-bold flex items-center gap-1">
+                <AlertCircle size={12}/> Limit Reached
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -313,7 +308,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
               </div>
             ))}
             
-            {files.length < MAX_FILES && (
+            {files.length < MAX_FILES && !isProcessing && (
               <button 
                 onClick={triggerUpload}
                 disabled={disabled}

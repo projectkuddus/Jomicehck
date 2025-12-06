@@ -10,11 +10,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 let analysisContext: AnalysisResult | null = null;
 let chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [];
 
-// Vercel Pro plan has higher limits but we still batch for reliability
-// Average document image is ~300-500KB in base64
-const MAX_BATCH_SIZE = 5; // Smaller batches = more reliable
-const MAX_PAYLOAD_SIZE = 3 * 1024 * 1024; // 3MB conservative limit
-const MAX_SINGLE_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB per file max
+// Batch settings - PDFs are now converted to images, so sizes are predictable
+// Each image is ~200-400KB after compression
+const MAX_BATCH_SIZE = 8; // More files per batch since they're smaller
+const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024; // 4MB limit
+const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024; // 3MB per file (rarely hit now)
 
 /**
  * Analyze a single batch of documents

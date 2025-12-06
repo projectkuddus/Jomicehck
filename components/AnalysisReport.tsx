@@ -212,6 +212,57 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
             <div className={`absolute bottom-0 left-0 right-0 h-2 ${report.riskScore > 50 ? 'bg-red-500' : 'bg-emerald-500'} opacity-20`}></div>
           </div>
 
+          {/* Document Chain Analysis - JomiCheck's Unique Value */}
+          {report.documentTypes && report.documentTypes.length > 0 && (
+            <div className={`md:col-span-3 p-4 rounded-xl border-2 ${
+              report.isSameProperty === false 
+                ? 'bg-red-50 border-red-300' 
+                : 'bg-emerald-50 border-emerald-300'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className={`p-2 rounded-lg ${
+                  report.isSameProperty === false ? 'bg-red-100' : 'bg-emerald-100'
+                }`}>
+                  {report.isSameProperty === false ? (
+                    <AlertTriangle className="text-red-600" size={20} />
+                  ) : (
+                    <CheckCircle className="text-emerald-600" size={20} />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h4 className={`font-semibold ${
+                    report.isSameProperty === false ? 'text-red-800' : 'text-emerald-800'
+                  }`}>
+                    {report.isSameProperty === false 
+                      ? '⚠️ ভিন্ন সম্পত্তির ডকুমেন্ট সনাক্ত হয়েছে!' 
+                      : '✓ একই সম্পত্তির সম্পর্কিত ডকুমেন্ট'}
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {report.documentTypes.map((docType, idx) => (
+                      <span 
+                        key={idx}
+                        className={`px-3 py-1 text-sm rounded-full ${
+                          report.isSameProperty === false 
+                            ? 'bg-red-100 text-red-700' 
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        📄 {docType}
+                      </span>
+                    ))}
+                  </div>
+                  {report.propertyMatchReason && (
+                    <p className={`mt-2 text-sm ${
+                      report.isSameProperty === false ? 'text-red-700' : 'text-emerald-700'
+                    }`}>
+                      {report.propertyMatchReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Document Summary - Enhanced */}
           <div className="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">

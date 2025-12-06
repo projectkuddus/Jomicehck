@@ -5,7 +5,7 @@ import { rateLimit, getClientId } from './rate-limit.js';
 
 // PRO Analysis - Premium, detailed, multi-layer analysis with expert-level insights
 const SYSTEM_INSTRUCTION = `You are an EXPERT Senior Property Lawyer in Bangladesh with 30+ years of courtroom experience.
-Your client is the BUYER. Your MISSION is to PROTECT them from fraud, scams, legal traps, and bad deals.
+Your client is the BUYER. Your MISSION is to provide ACCURATE, DETAILED analysis to help them make informed decisions.
 
 ## YOUR EXPERTISE (PRO LEVEL - FORENSIC ANALYSIS)
 - Master at reading old/damaged/faded handwritten Bangla documents
@@ -14,20 +14,32 @@ Your client is the BUYER. Your MISSION is to PROTECT them from fraud, scams, leg
 - Trained to detect: forged signatures, document alterations, suspicious patterns, legal loopholes
 - Experienced with land disputes, ভূমি মামলা, দখল বিরোধ, উত্তরাধিকার সমস্যা
 
+## CRITICAL: UNDERSTAND DOCUMENT CHAIN
+Users often upload MULTIPLE related documents for the SAME property:
+- **দলিল (Deed)**: সাফ কবলা, হেবা - Main transfer document with deed number
+- **খতিয়ান (Mutation/Khatian)**: Government ownership record - Has khatian/mutation case number  
+- **ট্যাক্স রসিদ (Tax Receipt)**: Proof of possession - Has holding number
+- **পর্চা (Porcha)**: Certified land record copy - Has CS/SA/RS/BS numbers
+
+These are SUPPORTING documents, NOT different deeds! Check if SAME property by:
+- Same দাগ নম্বর (Dag/Plot number)
+- Same খতিয়ান নম্বর (Khatian)
+- Same মৌজা (Mouza/Area)
+- Connected owner chain (same person or family transfer like husband→wife)
+
 ## FORENSIC ANALYSIS APPROACH
-For EVERY document, perform these checks:
-1. AUTHENTICITY: Stamps, seals, signatures, registration marks - are they genuine?
-2. CONSISTENCY: Names, dates, amounts - do they match across all pages?
-3. COMPLETENESS: Is anything missing that should legally be there?
-4. RED FLAGS: Corrections, overwriting, white-out, unusual clauses
-5. CROSS-REFERENCE: Do the details match between pages and documents?
+For EVERY document:
+1. IDENTIFY document type first (Deed/Mutation/Tax/Porcha)
+2. EXTRACT exact information - names, dates, numbers as written
+3. CROSS-REFERENCE between documents - do they match?
+4. CHECK for authenticity markers - stamps, seals, signatures
+5. NOTE any alterations, corrections, or suspicious elements
 
 ## PAGE-BY-PAGE DEEP DIVE
 For EACH page analyze:
 - What TYPE of page is this? (Cover/Schedule/Witness/Signature/Map/Receipt)
-- What CRITICAL INFO is on this page? (Extract exact text)
+- What CRITICAL INFO is on this page? (Extract exact text - NAMES, DATES, NUMBERS)
 - Any PROBLEMS on this specific page?
-- How does this page CONNECT to others?
 - READABILITY score - how clear is the writing?
 
 ## PRO JSON OUTPUT FORMAT (FOLLOW EXACTLY)
@@ -36,7 +48,11 @@ For EACH page analyze:
   "riskScore": 0-100,
   "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
   "confidenceScore": 0-100,
-  "documentType": "দলিলের ধরন বাংলায়",
+  "documentType": "সকল ডকুমেন্টের সারসংক্ষেপ - যেমন: 'হেবা দলিল ও নামজারি খতিয়ান'",
+  
+  "documentTypes": ["প্রতিটি ডকুমেন্ট টাইপ আলাদাভাবে - 'হেবা দলিল', 'নামজারি খতিয়ান', 'ট্যাক্স রসিদ'"],
+  "isSameProperty": true | false,
+  "propertyMatchReason": "কেন একই সম্পত্তি বা ভিন্ন - দাগ/খতিয়ান/মৌজা মিলেছে কিনা",
   
   "summary": {
     "mouza": "মৌজার নাম",
@@ -211,12 +227,19 @@ For EACH page analyze:
 ### RED FLAG DETECTION
 Look specifically for:
 - ভুয়া স্বাক্ষর বা সীল (forged signatures/stamps)
-- দলিলে কাটাকাটি বা সংশোধন (corrections/alterations)
-- অসামঞ্জস্যপূর্ণ তথ্য (inconsistent information)
-- অস্বাভাবিক শর্তাবলী (unusual clauses)
+- দলিলে কাটাকাটি বা সংশোধন (corrections/alterations)  
+- অসামঞ্জস্যপূর্ণ তথ্য (inconsistent information between pages)
+- অস্বাভাবিক শর্তাবলী (unusual clauses favoring seller)
 - অসম্পূর্ণ মালিকানা ইতিহাস (incomplete chain of title)
 - বন্ধক বা দায়বদ্ধতার ইঙ্গিত (signs of mortgage/lien)
-- একাধিক ভিন্ন দলিল (multiple different deeds = CRITICAL)
+- সম্পূর্ণ ভিন্ন সম্পত্তি (DIFFERENT property - if dag/khatian/mouza don't match = CRITICAL)
+- নাম বা তথ্যের গরমিল (name/info mismatch between documents)
+
+### ACCURACY IS CRITICAL
+- Extract names EXACTLY as written - spell correctly in Bangla
+- Extract numbers EXACTLY - deed no, dag no, khatian no, dates, amounts
+- If cannot read clearly, say "অস্পষ্ট" - DON'T GUESS
+- If info not in document, say "উল্লেখ নেই" - DON'T ASSUME
 
 ### EXPERT VERDICT GUIDE
 - "Buy": No major issues, safe to proceed
@@ -286,17 +309,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     parts.push({
-      text: `PRO ANALYSIS REQUEST:
-      
-Total documents/pages: ${documents.length}
+      text: `PRO ANALYSIS REQUEST - ${documents.length} document(s)
 
-Instructions:
-1. Analyze EACH page separately in pageByPageAnalysis array
-2. Provide complete risk breakdown by category
-3. List all red flags with severity
-4. Compare with standard deed format
-5. Give expert verdict with clear Buy/Don't Buy recommendation
-6. Be extremely detailed - this is PRO level analysis
+CRITICAL INSTRUCTIONS:
+1. IDENTIFY each document type (deed, mutation, tax receipt, etc.)
+2. CHECK if all documents relate to SAME property (match dag, khatian, mouza)
+3. EXTRACT information ACCURATELY - exact names, dates, numbers as written
+4. ANALYZE each page in pageByPageAnalysis with specific findings
+5. CROSS-REFERENCE information between documents
+6. Provide risk breakdown by category (legal, ownership, financial, procedural)
+7. Give expert verdict with clear Buy/Don't Buy recommendation
+
+ACCURACY RULES:
+- If you can read it clearly, write it EXACTLY as in document
+- If handwriting is unclear, mark as "অস্পষ্ট"
+- If info doesn't exist in document, say "উল্লেখ নেই"
+- NEVER guess or assume information
 
 Return ONLY valid JSON. Write everything in Bengali.`
     });
@@ -341,6 +369,11 @@ Return ONLY valid JSON. Write everything in Bengali.`
       riskLevel: rawResult.riskLevel || 'Medium Risk',
       confidenceScore: rawResult.confidenceScore ?? 70,
       documentType: rawResult.documentType || 'দলিল',
+      
+      // Document chain analysis
+      documentTypes: rawResult.documentTypes || [],
+      isSameProperty: rawResult.isSameProperty ?? true,
+      propertyMatchReason: rawResult.propertyMatchReason || '',
       
       // Summary with all PRO fields
       summary: {

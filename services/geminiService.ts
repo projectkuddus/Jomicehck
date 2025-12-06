@@ -61,7 +61,7 @@ const analyzeBatch = async (
 
 /**
  * Merge multiple analysis results into one comprehensive result
- * CRITICAL: Check if results indicate different deeds were analyzed
+ * SMART CHECK: Detect if results are from different PROPERTIES (not just different document types)
  */
 const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
   if (results.length === 0) {
@@ -79,27 +79,40 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
   const allMissingInfo = new Set<string>();
   const allNextSteps = new Set<string>();
   const allTimelineEvents: Array<{ date: string; event: string }> = [];
+  const allDocumentTypes = new Set<string>();
 
-  // CRITICAL CHECK: Detect if different batches analyzed different deeds
-  // Compare deed numbers, dates, and locations from summaries
-  const deedIdentifiers = results.map(r => ({
-    deedNo: r.summary?.deedNo || '',
-    date: r.summary?.date || '',
+  // SMART CHECK: Detect different PROPERTIES using property identifiers
+  // Property is identified by: dagNo + khatianNo + mouza (NOT deed number or date)
+  // Different document types (deed, mutation, tax) for SAME property is GOOD
+  const propertyIdentifiers = results.map(r => ({
+    dagNo: r.summary?.dagNo || '',
+    khatianNo: r.summary?.khatianNo || '',
     mouza: r.summary?.mouza || '',
+    isSameProperty: (r as any).isSameProperty,
   }));
 
-  const uniqueDeeds = new Set(
-    deedIdentifiers
-      .filter(d => d.deedNo || d.date || d.mouza) // Only count if has identifier
-      .map(d => `${d.deedNo}|${d.date}|${d.mouza}`)
+  // Check if AI explicitly flagged different property
+  const aiSaysDifferentProperty = results.some(r => (r as any).isSameProperty === false);
+
+  // Check property identifiers - only flag if both dag and mouza are different
+  const uniqueProperties = new Set(
+    propertyIdentifiers
+      .filter(p => p.dagNo || p.mouza) // Only count if has property identifier
+      .map(p => `${p.dagNo}|${p.mouza}`) // Use dag + mouza (not khatian as it varies by record type)
   );
 
-  const hasMultipleDeeds = uniqueDeeds.size > 1;
+  // Only consider it different properties if:
+  // 1. AI explicitly said so, OR
+  // 2. More than one unique property AND they actually have different identifiers
+  const hasDifferentProperties = aiSaysDifferentProperty || 
+    (uniqueProperties.size > 1 && 
+     propertyIdentifiers.every(p => p.dagNo) && // All have dag numbers
+     [...uniqueProperties].some((p1, i, arr) => i > 0 && p1 !== arr[0])); // And they differ
 
-  // CRITICAL: If multiple different deeds detected, add warning and increase risk
-  if (hasMultipleDeeds) {
-    console.warn('⚠️ CRITICAL: Multiple different deeds detected in analysis!');
-    allCriticalIssues.add('⚠️ সতর্কতা: একাধিক ভিন্ন দলিল একসাথে আপলোড করা হয়েছে। এটি অত্যন্ত ঝুঁকিপূর্ণ। প্রতিটি দলিল আলাদাভাবে বিশ্লেষণ করা উচিত। ভিন্ন দলিল একসাথে বিশ্লেষণ করলে ভুল ফলাফল পাওয়া যায় যা আইনি সমস্যা সৃষ্টি করতে পারে।');
+  // Only add warning if TRULY different properties detected
+  if (hasDifferentProperties) {
+    console.warn('⚠️ Different properties detected in analysis');
+    allCriticalIssues.add('⚠️ সতর্কতা: আপলোডকৃত ডকুমেন্টগুলো ভিন্ন ভিন্ন সম্পত্তির বলে মনে হচ্ছে। দাগ নম্বর বা মৌজা মিলছে না। প্রতিটি সম্পত্তির ডকুমেন্ট আলাদাভাবে বিশ্লেষণ করুন।');
   }
 
   let totalRiskScore = 0;
@@ -118,17 +131,23 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     if (riskLevelOrder[result.riskLevel] > riskLevelOrder[maxRiskLevel]) {
       maxRiskLevel = result.riskLevel;
     }
+    
+    // Collect document types
+    const docTypes = (result as any).documentTypes;
+    if (docTypes && Array.isArray(docTypes)) {
+      docTypes.forEach((t: string) => allDocumentTypes.add(t));
+    }
   });
 
   // Use the first result as base, but aggregate all data
   const baseResult = results[0];
   let avgRiskScore = Math.round(totalRiskScore / results.length);
   
-  // CRITICAL: If multiple deeds detected, significantly increase risk score
-  if (hasMultipleDeeds) {
-    avgRiskScore = Math.min(100, avgRiskScore + 35); // Add 35 points for mixed deeds
-    maxRiskLevel = 'Critical'; // Force to Critical level
-    console.warn('⚠️ Risk score increased due to multiple deeds:', avgRiskScore);
+  // Only increase risk if actually different PROPERTIES (not just different document types)
+  if (hasDifferentProperties) {
+    avgRiskScore = Math.min(100, avgRiskScore + 25); // Add 25 points for mixed properties
+    maxRiskLevel = 'High Risk'; // Flag as high risk, but not automatic Critical
+    console.warn('⚠️ Risk score increased due to different properties:', avgRiskScore);
   }
 
   // Merge PRO-specific fields from all results
@@ -147,7 +166,12 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     proAnalysis: isPro,
     riskScore: avgRiskScore,
     riskLevel: maxRiskLevel,
-    documentType: results.length > 1 ? `${results.length} Documents` : baseResult.documentType,
+    // Smart document type labeling
+    documentType: allDocumentTypes.size > 0 
+      ? Array.from(allDocumentTypes).join(' ও ')
+      : (results.length > 1 ? `${results.length} Documents` : baseResult.documentType),
+    documentTypes: Array.from(allDocumentTypes),
+    isSameProperty: !hasDifferentProperties,
     goodPoints: Array.from(allGoodPoints),
     badPoints: Array.from(allBadPoints),
     criticalIssues: Array.from(allCriticalIssues),

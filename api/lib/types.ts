@@ -17,6 +17,11 @@ export interface AnalysisResult {
   confidenceScore?: number;
   documentType: string;
   
+  // Document chain analysis
+  documentTypes?: string[];
+  isSameProperty?: boolean;
+  propertyMatchReason?: string;
+  
   // Summary (expanded for PRO)
   summary: {
     mouza: string;

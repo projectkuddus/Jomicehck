@@ -222,11 +222,14 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
 }`
     });
 
-    // PRO: Use ONLY latest Gemini Pro models (NO Flash, NO older models)
-    // Best for Bengali: Gemini 2.0 Pro > 1.5 Pro
+    // PRO: Use MOST ADVANCED Gemini models (NO Flash, NO older models)
+    // Priority: Gemini 3.0 Pro (latest) > 3 Pro Preview > 2.0 Pro > 1.5 Pro
     const modelPriority = [
-      'gemini-2.0-pro-exp',      // Latest, BEST for Bengali
-      'gemini-1.5-pro',          // Excellent Bengali support
+      'gemini-3.0-pro',          // MOST ADVANCED - Latest Gemini 3.0
+      'gemini-3-pro',            // Gemini 3 Pro (alternative name)
+      'gemini-3-pro-preview',   // Gemini 3 Pro Preview (if 3.0 not available)
+      'gemini-2.0-pro-exp',      // Gemini 2.0 Pro (fallback)
+      'gemini-1.5-pro',          // Gemini 1.5 Pro (last resort)
     ];
     
     let result: any = null;
@@ -245,9 +248,9 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           },
           config: {
             systemInstruction: SYSTEM_INSTRUCTION,
-            ...(model.includes('2.0') && {
+            ...((model.includes('3.0') || model.includes('3-pro')) && {
               thinkingConfig: {
-                thinkingBudget: 32768,
+                thinkingBudget: 32768, // Maximum thinking for Gemini 3.0
               },
             }),
             responseMimeType: 'application/json',
@@ -292,7 +295,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       // Build result with defaults (same structure as GPT-4o)
       const finalResult = {
         proAnalysis: true,
-        modelUsed: modelName || 'gemini-1.5-pro', // Pro model only
+        modelUsed: modelName || 'gemini-3.0-pro', // Most advanced Pro model
         
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',

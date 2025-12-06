@@ -68,16 +68,16 @@ const Support: React.FC = () => {
         </div>
 
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
-           <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-4">
+           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
              <MessageSquare size={24} />
            </div>
-           <h3 className="text-xl font-bold text-slate-900 mb-2">Live Chat</h3>
+           <h3 className="text-xl font-bold text-slate-900 mb-2">নির্ণয় AI Chat</h3>
            <p className="text-slate-500 text-sm mb-4">
-             Available 10 AM - 6 PM (BD Time)
+             24/7 AI সাপোর্ট - বাংলায় প্রশ্ন করুন
            </p>
-           <button className="bg-slate-900 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">
-             Start Chat
-           </button>
+           <p className="text-xs text-emerald-600 font-medium">
+             👉 স্ক্রিনের নিচে ডান কোনায় চ্যাট বাটন দেখুন
+           </p>
         </div>
       </div>
 

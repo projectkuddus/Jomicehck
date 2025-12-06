@@ -18,6 +18,7 @@ import AdminPanel from './components/AdminPanel';
 import AuthDebug from './components/AuthDebug';
 import BlogList from './components/BlogList';
 import BlogArticle from './components/BlogArticle';
+import LiveChat from './components/LiveChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import { analyzeDocuments } from './services/geminiService';
@@ -775,6 +776,9 @@ const AppContent: React.FC = () => {
         )}
 
       </main>
+
+      {/* Live Chat - নির্ণয় AI Support */}
+      <LiveChat />
 
       {/* Debug Component (only in development) */}
       {!import.meta.env.PROD && <AuthDebug />}

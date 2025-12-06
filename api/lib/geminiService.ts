@@ -8,11 +8,14 @@ const getAI = () => {
   if (!ai) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
+      console.error('❌ GEMINI_API_KEY not found!');
+      console.error('❌ Available env vars:', Object.keys(process.env).filter(k => k.includes('GEMINI') || k.includes('API')));
       throw new Error("GEMINI_API_KEY not found in environment");
     }
     // Log first few chars for debugging (safe - not exposing full key)
-    console.log(`Initializing Gemini with key starting: ${apiKey.substring(0, 10)}...`);
+    console.log(`✅ Initializing Gemini with key starting: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
     ai = new GoogleGenAI({ apiKey });
+    console.log('✅ GoogleGenAI instance created');
   }
   return ai;
 };
@@ -122,6 +125,10 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
     
     let response;
     try {
+      console.log('🔄 Calling genAI.models.generateContent...');
+      console.log('📋 Parts count:', parts.length);
+      console.log('📋 First part type:', typeof parts[0], parts[0]?.inlineData ? 'inlineData' : parts[0]?.text ? 'text' : 'unknown');
+      
       response = await genAI.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: {

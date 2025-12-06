@@ -267,6 +267,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
         </div>
       )}
 
+      {/* Quality Tips Banner */}
+      <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+        <div className="flex items-start gap-3">
+          <div className="p-1.5 bg-amber-100 rounded-full mt-0.5">
+            <AlertCircle size={14} className="text-amber-600" />
+          </div>
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800 mb-1">সেরা ফলাফলের জন্য:</p>
+            <ul className="text-amber-700 text-xs space-y-0.5">
+              <li>✓ <strong>মূল স্ক্যান (JPEG/PNG)</strong> আপলোড করুন - PDF এর চেয়ে ভালো</li>
+              <li>✓ <strong>উচ্চ রেজোলিউশন</strong> (300 DPI) স্ক্যান ব্যবহার করুন</li>
+              <li>✓ পুরনো/ঝাপসা দলিল হলে <strong>PRO Analysis</strong> ব্যবহার করুন</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {files.length === 0 ? (
         <div 
           onClick={disabled || isProcessing ? undefined : triggerUpload}
@@ -278,13 +295,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
           <div className="bg-slate-100 p-4 rounded-full mb-3">
             <Upload className="text-slate-500 w-8 h-8" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800">Upload Property Documents</h3>
-          <p className="text-slate-500 mt-1 text-sm max-w-xs leading-relaxed">
-            <span className="font-semibold text-brand-600">Tip:</span> Upload a <strong className="text-slate-700">Draft Deed</strong> before signing, or a final signed copy for verification.
+          <h3 className="text-base font-semibold text-slate-800 bangla-text">দলিল আপলোড করুন</h3>
+          <p className="text-slate-500 mt-1 text-sm max-w-xs leading-relaxed bangla-text">
+            সাইন করার <strong className="text-slate-700">আগে</strong> ড্রাফট দলিল, অথবা সাইন করা দলিল যাচাই করতে আপলোড করুন
           </p>
-          <p className="text-xs text-slate-400 mt-3">
-            Supports PDF, JPG, PNG, HEIC • PDFs auto-converted to images
-          </p>
+          <div className="flex flex-wrap justify-center gap-2 mt-3">
+            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">✓ JPEG/PNG সেরা</span>
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">✓ PDF সাপোর্ট</span>
+            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">✓ HEIC সাপোর্ট</span>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

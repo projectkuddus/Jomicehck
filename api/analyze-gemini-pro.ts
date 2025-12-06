@@ -114,6 +114,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     parts.push({
       text: `PRO বিশ্লেষণ: এই ${documents.length}টি ডকুমেন্ট গভীরভাবে পড়ুন।
 
+**গুরুত্বপূর্ণ**: প্রতিটি পৃষ্ঠা/ডকুমেন্ট আলাদাভাবে বিশ্লেষণ করুন এবং pageByPageAnalysis এ দিন।
+
 JSON ফরম্যাটে উত্তর দিন:
 {
   "riskScore": 0-100,
@@ -121,23 +123,53 @@ JSON ফরম্যাটে উত্তর দিন:
   "expertVerdict": {
     "recommendation": "Buy" | "Buy with Caution" | "Negotiate" | "Do Not Buy" | "Need More Documents",
     "confidence": 0-100,
-    "summary": "সংক্ষিপ্ত মতামত",
-    "keyReasons": ["কারণ"]
+    "summary": "বিস্তারিত বিশ্লেষণ ও পরামর্শ (৩-৪ লাইন)",
+    "keyReasons": ["মূল কারণ ১", "মূল কারণ ২", "মূল কারণ ৩"]
   },
+  "pageByPageAnalysis": [
+    {
+      "pageNumber": 1,
+      "pageType": "দলিলের ধরন (সাফ কবলা/হেবা/নামজারি/etc)",
+      "keyFindings": ["এই পৃষ্ঠায় যা পাওয়া গেছে"],
+      "extractedData": {
+        "names": ["উল্লেখিত নাম"],
+        "dates": ["তারিখ"],
+        "amounts": ["টাকা/জমির পরিমাণ"],
+        "dagKhatian": "দাগ/খতিয়ান নম্বর"
+      },
+      "issues": ["সমস্যা"],
+      "readabilityScore": 0-100
+    }
+  ],
   "documentType": "সব ডকুমেন্টের সারসংক্ষেপ",
   "documentTypes": ["প্রতিটি ডকুমেন্টের ধরন"],
   "isSameProperty": true/false,
-  "propertyMatchReason": "দাগ/মৌজা মিলেছে কিনা",
+  "propertyMatchReason": "দাগ/মৌজা মিলেছে কিনা - বিস্তারিত",
   "summary": {
     "mouza": "", "thana": "", "district": "", "deedNo": "", "date": "",
     "propertyAmount": "", "sellerName": "", "sellerFather": "",
     "buyerName": "", "buyerFather": "", "dagNo": "", "khatianNo": "",
-    "landAmount": "", "landType": "", "boundaries": {}
+    "landAmount": "", "landType": "", 
+    "boundaries": {"north": "", "south": "", "east": "", "west": ""}
   },
-  "goodPoints": [], "badPoints": [], "criticalIssues": [], "missingInfo": [],
-  "chainOfTitleAnalysis": "", "chainOfTitleTimeline": [],
-  "buyerProtection": {"verdict": "", "score": 0, "details": ""},
-  "nextSteps": []
+  "riskBreakdown": {
+    "legal": {"score": 0-100, "issues": ["আইনি সমস্যা"]},
+    "ownership": {"score": 0-100, "issues": ["মালিকানা সমস্যা"]},
+    "documentation": {"score": 0-100, "issues": ["ডকুমেন্ট সমস্যা"]},
+    "possession": {"score": 0-100, "issues": ["দখল সমস্যা"]}
+  },
+  "redFlags": [
+    {"severity": "Critical/High/Medium/Low", "title": "সমস্যার নাম", "description": "বিস্তারিত", "recommendation": "কী করতে হবে"}
+  ],
+  "goodPoints": ["✅ ভালো দিক"], 
+  "badPoints": ["⚠️ সমস্যা"], 
+  "criticalIssues": ["🚨 গুরুতর সমস্যা"], 
+  "missingInfo": ["📋 যা নেই"],
+  "chainOfTitleAnalysis": "মালিকানার ইতিহাস বিশ্লেষণ", 
+  "chainOfTitleTimeline": [{"date": "তারিখ", "event": "ঘটনা"}],
+  "buyerProtection": {"verdict": "Buyer Safe/Risky/Neutral", "score": 0-100, "details": "কেন"},
+  "legalAdvice": "বিস্তারিত আইনি পরামর্শ - ক্রেতার জন্য কী করা উচিত",
+  "nextSteps": ["১। প্রথম পদক্ষেপ", "২। দ্বিতীয় পদক্ষেপ"]
 }`
     });
 
@@ -228,12 +260,18 @@ JSON ফরম্যাটে উত্তর দিন:
         modelUsed: 'gpt-4o',
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',
+        confidenceScore: rawResult.expertVerdict?.confidence || 85,
         expertVerdict: rawResult.expertVerdict || {},
         documentType: rawResult.documentType || 'দলিল',
         documentTypes: rawResult.documentTypes || [],
         isSameProperty: rawResult.isSameProperty ?? true,
         propertyMatchReason: rawResult.propertyMatchReason || '',
         summary: rawResult.summary || {},
+        // PRO-specific fields
+        pageByPageAnalysis: rawResult.pageByPageAnalysis || [],
+        riskBreakdown: rawResult.riskBreakdown || {},
+        redFlags: rawResult.redFlags || [],
+        legalAdvice: rawResult.legalAdvice || '',
         goodPoints: rawResult.goodPoints || [],
         badPoints: rawResult.badPoints || [],
         criticalIssues: rawResult.criticalIssues || [],
@@ -266,12 +304,18 @@ JSON ফরম্যাটে উত্তর দিন:
       modelUsed: usedModel,
       riskScore: rawResult.riskScore ?? 50,
       riskLevel: rawResult.riskLevel || 'Medium Risk',
+      confidenceScore: rawResult.expertVerdict?.confidence || 85,
       expertVerdict: rawResult.expertVerdict || {},
       documentType: rawResult.documentType || 'দলিল',
       documentTypes: rawResult.documentTypes || [],
       isSameProperty: rawResult.isSameProperty ?? true,
       propertyMatchReason: rawResult.propertyMatchReason || '',
       summary: rawResult.summary || {},
+      // PRO-specific fields
+      pageByPageAnalysis: rawResult.pageByPageAnalysis || [],
+      riskBreakdown: rawResult.riskBreakdown || {},
+      redFlags: rawResult.redFlags || [],
+      legalAdvice: rawResult.legalAdvice || '',
       goodPoints: rawResult.goodPoints || [],
       badPoints: rawResult.badPoints || [],
       criticalIssues: rawResult.criticalIssues || [],

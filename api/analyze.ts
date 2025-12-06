@@ -49,19 +49,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Log metadata for debugging
-    if (metadata) {
-      console.log('📄 Analysis request:', {
-        totalDocuments: metadata.totalDocuments,
-        documentCount: documents.length,
-      });
-    }
+    // DETAILED LOGGING for debugging
+    console.log('📄 Analysis request:', {
+      totalDocuments: documents.length,
+      documentDetails: documents.map((d: any) => ({
+        name: d.name,
+        mimeType: d.mimeType,
+        dataLength: d.data?.length || 0,
+        dataPreview: d.data?.substring(0, 50) + '...'
+      })),
+      hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      geminiKeyPrefix: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 10) + '...' : 'MISSING'
+    });
 
     const result = await analyzeDocuments(documents as DocumentInput[]);
+    console.log('✅ Analysis completed successfully');
     return res.json(result);
 
   } catch (error: any) {
-    console.error("Analysis error:", error);
+    // DETAILED ERROR LOGGING
+    console.error("❌ Analysis error:", {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n'),
+      cause: error.cause,
+    });
     const errorMessage = error.message || "Something went wrong";
     return res.status(500).json({ error: errorMessage });
   }

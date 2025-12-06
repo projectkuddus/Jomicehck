@@ -118,8 +118,11 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
     const genAI = getAI();
     
     console.log('🤖 Calling Gemini API with', parts.length, 'parts');
+    console.log('🔍 Document types:', docs.map(d => ({ name: d.name, mimeType: d.mimeType, dataLen: d.data?.length })));
     
-    const response = await genAI.models.generateContent({
+    let response;
+    try {
+      response = await genAI.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: {
         parts: parts
@@ -171,6 +174,16 @@ Now analyze these documents. Be critical. Find what is wrong. Ensure you populat
         }
       }
     });
+    } catch (apiError: any) {
+      console.error('❌ Gemini API call failed:', {
+        message: apiError.message,
+        status: apiError.status,
+        statusText: apiError.statusText,
+        error: apiError.error,
+        details: JSON.stringify(apiError).substring(0, 500)
+      });
+      throw new Error(`Gemini API error: ${apiError.message || 'Unknown API error'}`);
+    }
 
     console.log('✅ Gemini API response received');
     

@@ -223,12 +223,11 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
     });
 
     // PRO: Use ONLY MOST ADVANCED models - NO LESS
-    // Priority: Gemini 3.0 Pro > 3 Pro Preview > GPT-5.1
-    // NO fallback to older Gemini models (2.0 Pro, 1.5 Pro)
+    // Priority: Gemini 2.0 Pro Exp > 1.5 Pro > GPT-5.1
+    // Note: Gemini 3.0 Pro may not be available yet - using confirmed available models
     const modelPriority = [
-      'gemini-3.0-pro',          // MOST ADVANCED - Latest Gemini 3.0
-      'gemini-3-pro',            // Gemini 3 Pro (alternative name)
-      'gemini-3-pro-preview',   // Gemini 3 Pro Preview (NO LESS)
+      'gemini-2.0-pro-exp',     // Latest available - Gemini 2.0 Pro Experimental
+      'gemini-1.5-pro',         // Stable Pro model (excellent for Bengali)
     ];
     
     let result: any = null;
@@ -240,18 +239,15 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
         modelName = model;
         console.log(`🤖 PRO: Trying ${modelName} (Pro model only, NO Flash)...`);
         
-        result = await ai.models.generateContent({
+        // Use correct API format for @google/genai
+        const model = ai.getGenerativeModel({ 
           model: modelName,
-          contents: {
-            parts: parts
-          },
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            ...((model.includes('3.0') || model.includes('3-pro')) && {
-              thinkingConfig: {
-                thinkingBudget: 32768, // Maximum thinking for Gemini 3.0
-              },
-            }),
+          systemInstruction: SYSTEM_INSTRUCTION,
+        });
+        
+        result = await model.generateContent({
+          contents: [{ parts }],
+          generationConfig: {
             responseMimeType: 'application/json',
             temperature: 0.1, // Low temperature for accuracy
           },
@@ -270,13 +266,14 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       throw lastError || new Error('All Gemini models failed');
     }
 
-    const text = result.text || '';
+    // Get response text - format depends on API version
+    const text = result.response?.text() || result.text || '';
       
-      if (!text || text.trim() === '') {
-        throw new Error('Empty response from Gemini');
-      }
+    if (!text || text.trim() === '') {
+      throw new Error('Empty response from Gemini');
+    }
 
-      console.log('✅ Gemini response received');
+    console.log('✅ Gemini response received');
       
       let rawResult;
       try {
@@ -294,7 +291,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       // Build result with defaults (same structure as GPT-4o)
       const finalResult = {
         proAnalysis: true,
-        modelUsed: modelName || 'gemini-3.0-pro', // Most advanced Pro model
+        modelUsed: modelName || 'gemini-2.0-pro-exp', // Latest available Pro model
         
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',

@@ -162,22 +162,28 @@ JSON ফরম্যাটে উত্তর দিন:
       // PLUS: Use ONLY Gemini 2.0 Pro Exp (latest, best for Bengali)
       // NO fallback to older Gemini models
       console.log(`🤖 PLUS: Using Gemini 2.0 Pro Exp (latest, best for Bengali, NO older models)...`);
-      const result = await ai.models.generateContent({
+      
+      // Use correct API format for @google/genai
+      const model = ai.getGenerativeModel({ 
         model: 'gemini-2.0-pro-exp',
-        contents: { parts },
-            config: {
-              systemInstruction: SYSTEM_INSTRUCTION,
-              responseMimeType: 'application/json',
-              temperature: 0.1,
-            },
-          });
+        systemInstruction: SYSTEM_INSTRUCTION,
+      });
+      
+      const result = await model.generateContent({
+        contents: [{ parts }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        },
+      });
           
-          console.log(`✅ Gemini 2.0 Pro Exp responded successfully`);
-          
-          const text = result.text || '';
-          if (!text) {
-            throw new Error('Empty response from Gemini');
-          }
+      console.log(`✅ Gemini 2.0 Pro Exp responded successfully`);
+      
+      // Get response text - format depends on API version
+      const text = result.response?.text() || result.text || '';
+      if (!text) {
+        throw new Error('Empty response from Gemini');
+      }
           
           let rawResult;
           try {

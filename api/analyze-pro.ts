@@ -260,10 +260,12 @@ Instructions:
 Return ONLY valid JSON. Write everything in Bengali.`
     });
 
-    console.log('🤖 Calling Gemini 1.5 Pro for deep analysis...');
+    console.log('🤖 Calling Gemini 1.5 Flash for PRO deep analysis...');
     
+    // Note: Using gemini-1.5-flash as gemini-1.5-pro requires paid API access
+    // gemini-1.5-flash still provides excellent detailed analysis with 1M token context
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-pro',
+      model: 'gemini-1.5-flash',
       contents: { parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -271,7 +273,7 @@ Return ONLY valid JSON. Write everything in Bengali.`
       }
     });
 
-    console.log('✅ Gemini 1.5 Pro response received');
+    console.log('✅ Gemini 1.5 Flash PRO response received');
     
     let text: string;
     if (response && typeof response === 'object' && 'text' in response) {

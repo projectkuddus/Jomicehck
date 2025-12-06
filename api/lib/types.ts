@@ -15,6 +15,9 @@ export interface AnalysisResult {
     deedNo: string;
     date: string;
     propertyAmount: string;
+    sellerName?: string;
+    buyerName?: string;
+    propertyDescription?: string;
   };
   goodPoints: string[];
   badPoints: string[];
@@ -30,6 +33,8 @@ export interface AnalysisResult {
     date: string;
     event: string;
   }[];
+  legalClauses?: string[];
+  hiddenRisks?: string[];
 }
 
 export interface ChatMessage {

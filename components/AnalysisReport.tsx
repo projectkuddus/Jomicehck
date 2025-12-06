@@ -109,24 +109,46 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                <FileSearch size={16} /> Document Details
              </h3>
-             <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">Type</span>
-                  <span className="font-semibold text-lg text-slate-800 bangla-text">{report.documentType}</span>
+                  <span className="text-xs text-slate-500 block">দলিলের ধরন</span>
+                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.documentType || "N/A"}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">Property Amount</span>
-                  <span className="font-semibold text-lg text-slate-800 bangla-text">{report.summary.propertyAmount || "N/A"}</span>
+                  <span className="text-xs text-slate-500 block">সম্পত্তির মূল্য/পরিমাণ</span>
+                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.propertyAmount || "N/A"}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">Mouza</span>
-                  <span className="font-semibold text-lg text-slate-800 bangla-text">{report.summary.mouza || "N/A"}</span>
+                  <span className="text-xs text-slate-500 block">মৌজা</span>
+                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.mouza || "N/A"}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">Deed No / Date</span>
-                  <span className="font-semibold text-lg text-slate-800 bangla-text">{report.summary.deedNo || "N/A"} • {report.summary.date || "N/A"}</span>
+                  <span className="text-xs text-slate-500 block">দলিল নম্বর</span>
+                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.deedNo || "N/A"}</span>
                 </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <span className="text-xs text-slate-500 block">তারিখ</span>
+                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.date || "N/A"}</span>
+                </div>
+                {report.summary.sellerName && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-500 block">বিক্রেতা</span>
+                    <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.sellerName}</span>
+                  </div>
+                )}
+                {report.summary.buyerName && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-500 block">ক্রেতা</span>
+                    <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.buyerName}</span>
+                  </div>
+                )}
              </div>
+             {report.summary.propertyDescription && (
+               <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+                 <span className="text-xs text-slate-500 block mb-1">সম্পত্তির বিবরণ</span>
+                 <span className="text-sm text-slate-800 bangla-text">{report.summary.propertyDescription}</span>
+               </div>
+             )}
           </div>
         </div>
 
@@ -267,6 +289,48 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
 
         </div>
 
+        {/* Hidden Risks */}
+        {report.hiddenRisks && report.hiddenRisks.length > 0 && (
+          <div className="mb-8 bg-purple-50 border border-purple-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-purple-100/50 px-6 py-4 border-b border-purple-200 flex items-center gap-3">
+              <AlertTriangle className="text-purple-600" size={24} />
+              <h3 className="text-xl font-bold text-purple-800">লুকানো ঝুঁকি (Hidden Risks)</h3>
+            </div>
+            <div className="p-6">
+              <ul className="space-y-4">
+                {report.hiddenRisks.map((risk, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-purple-900 font-medium text-base bangla-text">
+                    <AlertTriangle className="shrink-0 mt-0.5 text-purple-500" size={20} />
+                    {risk}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Legal Clauses */}
+        {report.legalClauses && report.legalClauses.length > 0 && (
+          <div className="mb-8 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+              <Scale className="text-slate-600" size={24} />
+              <h3 className="text-xl font-bold text-slate-800">গুরুত্বপূর্ণ শর্তাবলী (Legal Clauses)</h3>
+            </div>
+            <div className="p-6">
+              <ul className="space-y-4">
+                {report.legalClauses.map((clause, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-slate-700 text-base bangla-text p-3 bg-slate-50 rounded-lg">
+                    <span className="bg-slate-200 text-slate-600 rounded-full w-6 h-6 flex items-center justify-center shrink-0 text-sm font-bold">
+                      {idx + 1}
+                    </span>
+                    {clause}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* 6. Suggestions for Improvement */}
         <div className="bg-slate-900 rounded-xl p-6 md:p-8 text-white shadow-lg">
           <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -326,3 +390,4 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
 };
 
 export default AnalysisReport;
+

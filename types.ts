@@ -17,6 +17,9 @@ export interface AnalysisResult {
     deedNo: string;
     date: string;
     propertyAmount: string;
+    sellerName?: string;
+    buyerName?: string;
+    propertyDescription?: string;
   };
   goodPoints: string[];
   badPoints: string[];
@@ -32,6 +35,8 @@ export interface AnalysisResult {
     date: string;
     event: string;
   }[];
+  legalClauses?: string[]; // Important clauses explained
+  hiddenRisks?: string[]; // Risks not immediately visible
 }
 
 export interface AnalysisState {

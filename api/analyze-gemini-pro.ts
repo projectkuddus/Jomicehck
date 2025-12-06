@@ -223,10 +223,12 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
     });
 
     // PRO: Use ONLY MOST ADVANCED models - NO LESS
-    // Priority: Gemini 2.0 Pro Exp > 1.5 Pro > GPT-5.1
-    // Note: Gemini 3.0 Pro may not be available yet - using confirmed available models
+    // Priority: Gemini 3 Pro Preview > 2.0 Pro Exp > 1.5 Pro > GPT-5.1
+    // Gemini 3 Pro is now available as preview
     const modelPriority = [
-      'gemini-2.0-pro-exp',     // Latest available - Gemini 2.0 Pro Experimental
+      'gemini-3-pro-preview',   // MOST ADVANCED - Gemini 3 Pro (preview)
+      'gemini-3-pro-deep-think', // Gemini 3 Pro Deep Think (if available)
+      'gemini-2.0-pro-exp',     // Gemini 2.0 Pro Experimental
       'gemini-1.5-pro',         // Stable Pro model (excellent for Bengali)
     ];
     
@@ -240,10 +242,19 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
         console.log(`🤖 PRO: Trying ${modelName} (Pro model only, NO Flash)...`);
         
         // Use correct API format for @google/genai
-        const model = ai.getGenerativeModel({ 
+        const modelConfig: any = {
           model: modelName,
           systemInstruction: SYSTEM_INSTRUCTION,
-        });
+        };
+        
+        // Add Deep Think config for Gemini 3 Pro Deep Think
+        if (modelName === 'gemini-3-pro-deep-think') {
+          modelConfig.thinkingConfig = {
+            thinkingBudget: 32768, // Maximum thinking budget
+          };
+        }
+        
+        const model = ai.getGenerativeModel(modelConfig);
         
         result = await model.generateContent({
           contents: [{ parts }],
@@ -291,7 +302,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       // Build result with defaults (same structure as GPT-4o)
       const finalResult = {
         proAnalysis: true,
-        modelUsed: modelName || 'gemini-2.0-pro-exp', // Latest available Pro model
+        modelUsed: modelName || 'gemini-3-pro-preview', // Most advanced Pro model
         
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',
@@ -484,7 +495,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
     // If all advanced models fail
     console.error('❌ All advanced models (Gemini 3.0 Pro, GPT-5.1) failed');
     return res.status(500).json({ 
-      error: `All advanced models failed. Gemini 3.0 Pro or GPT-5.1 required for PRO analysis. No fallback to older models.` 
+      error: `All advanced models failed. Gemini 3 Pro Preview, Gemini 2.0 Pro, or GPT-5.1 required for PRO analysis. No fallback to older models.` 
     });
   }
 

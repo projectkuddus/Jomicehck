@@ -13,24 +13,27 @@
 ## ✅ **PRO Analysis** (`/api/analyze-gemini-pro`)
 
 **Models Used (tries in order):**
-1. **Primary**: `gemini-2.0-pro-exp` (Gemini 2.0 Pro Experimental)
-2. **Fallback 1**: `gemini-1.5-pro` (Gemini 1.5 Pro - stable)
-3. **Fallback 2**: `gpt-5.1` (if all Gemini models fail and GPT-5.1 is available)
+1. **Primary**: `gemini-3-pro-preview` (Gemini 3 Pro - MOST ADVANCED) 🚀
+2. **Fallback 1**: `gemini-3-pro-deep-think` (Gemini 3 Pro Deep Think - advanced reasoning)
+3. **Fallback 2**: `gemini-2.0-pro-exp` (Gemini 2.0 Pro Experimental)
+4. **Fallback 3**: `gemini-1.5-pro` (Gemini 1.5 Pro - stable)
+5. **Fallback 4**: `gpt-5.1` (if all Gemini models fail and GPT-5.1 is available)
 
-**Status**: ✅ **ACTIVE** - Using confirmed available models
+**Status**: ✅ **ACTIVE** - Now using Gemini 3 Pro (latest and most advanced)
 
 ---
 
 ## ⚠️ **Important Changes Made**
 
 ### Fixed Issues:
-1. ✅ **Removed non-existent models**: `gemini-3.0-pro` doesn't exist yet
+1. ✅ **Added Gemini 3 Pro**: Now using `gemini-3-pro-preview` (most advanced)
 2. ✅ **Fixed API format**: Changed from `ai.models.generateContent()` to `ai.getGenerativeModel().generateContent()`
 3. ✅ **Fixed response handling**: Support both `result.text` and `result.response.text()`
+4. ✅ **Added Deep Think support**: `gemini-3-pro-deep-think` for advanced reasoning
 
 ### Model Priority:
 - **PLUS**: `gemini-2.0-pro-exp` → `gpt-5.1` (NO GPT-4o)
-- **PRO**: `gemini-2.0-pro-exp` → `gemini-1.5-pro` → `gpt-5.1` (NO GPT-4o)
+- **PRO**: `gemini-3-pro-preview` → `gemini-3-pro-deep-think` → `gemini-2.0-pro-exp` → `gemini-1.5-pro` → `gpt-5.1` (NO GPT-4o)
 
 ---
 
@@ -39,8 +42,8 @@
 ### Check if models are working:
 1. **Redeploy to Vercel**: `npx vercel --prod`
 2. **Test PLUS analysis**: Should work with `gemini-2.0-pro-exp`
-3. **Test PRO analysis**: Should work with `gemini-2.0-pro-exp` or `gemini-1.5-pro`
-4. **Check Vercel logs**: Look for model names in console logs
+3. **Test PRO analysis**: Should work with `gemini-3-pro-preview` (most advanced) or fallback models
+4. **Check Vercel logs**: Look for model names in console logs - should see "gemini-3-pro-preview"
 
 ### If still failing:
 - Check `GEMINI_API_KEY` in Vercel environment variables

@@ -1,76 +1,195 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
-import { DocumentInput, AnalysisResult } from './lib/types.js';
+import { DocumentInput } from './lib/types.js';
 import { rateLimit, getClientId } from './rate-limit.js';
 
-// PRO Analysis uses Gemini 1.5 Pro for deeper, more accurate analysis
+// PRO Analysis - Premium, detailed, multi-layer analysis
 const SYSTEM_INSTRUCTION = `You are an expert Senior Property Lawyer in Bangladesh with 30+ years of experience.
 Your client is the BUYER. Your job is to PROTECT them from fraud, bad deals, and legal issues.
 
-## YOUR EXPERTISE (PRO LEVEL)
+## YOUR EXPERTISE (PRO LEVEL - MAXIMUM DETAIL)
 - You can read old handwritten Bangla documents, even with very poor handwriting
 - You understand all types of deeds: সাফ কবলা, হেবা, বায়না, বণ্টননামা, উইল, ইজারা, etc.
 - You know Bangladesh land law deeply: SA, RS, CS, BS records, mutation, khatian, DCR, etc.
 - You can identify forged signatures, alterations, and suspicious patterns
 
-## CRITICAL CHECKS (Do these FIRST)
-1. Are these documents from the SAME deed or DIFFERENT deeds? Different = CRITICAL RISK
-2. Is the seller the actual owner? Check names carefully across all pages
-3. Is the property mortgaged or under any lien?
-4. Are there any suspicious clauses that favor the seller?
-5. Is the chain of ownership complete and logical?
-6. Look for signs of forgery or alteration
+## CRITICAL: PAGE-BY-PAGE ANALYSIS
+For EACH page/document uploaded, provide:
+1. What type of document/page is this?
+2. Key information extracted from THIS page
+3. Any issues found on THIS specific page
+4. Cross-reference with other pages
 
-## DOCUMENT READING INSTRUCTIONS (PRO LEVEL)
-- Read EVERY page with extreme care, including faded/damaged sections
-- Try to decipher old handwriting - make your best educated guess
-- Extract ALL names, dates, deed numbers, amounts, and property descriptions
-- Look for stamps, signatures, witness details, registration marks
-- Note any corrections, overwriting, cutting, or alterations
-- Identify the exact document type with confidence
-- Cross-reference information across pages for consistency
-
-## ANALYSIS DEPTH (PRO LEVEL)
-- Provide VERY DETAILED analysis with specific examples
-- Explain WHY something is a risk in simple Bangla
-- Reference exact page numbers, lines, or sections
-- Compare with standard legal practices
-- Identify clauses that could be used against the buyer later
-- Look for hidden conditions or escape clauses
-
-## JSON OUTPUT FORMAT
+## PRO JSON OUTPUT FORMAT (FOLLOW EXACTLY)
 {
+  "proAnalysis": true,
   "riskScore": 0-100,
   "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
+  "confidenceScore": 0-100,
   "documentType": "দলিলের ধরন বাংলায়",
+  
   "summary": {
     "mouza": "মৌজার নাম",
+    "jla": "জে.এল. নম্বর",
+    "thana": "থানা",
+    "district": "জেলা",
     "deedNo": "দলিল নম্বর",
     "date": "তারিখ",
-    "propertyAmount": "সম্পত্তির মূল্য",
+    "registrationOffice": "রেজিস্ট্রি অফিস",
+    "propertyAmount": "সম্পত্তির মূল্য (টাকা)",
+    "stampDuty": "স্ট্যাম্প শুল্ক",
+    "registrationFee": "রেজিস্ট্রেশন ফি",
     "sellerName": "বিক্রেতার নাম",
+    "sellerFather": "বিক্রেতার পিতার নাম",
+    "sellerAddress": "বিক্রেতার ঠিকানা",
     "buyerName": "ক্রেতার নাম",
-    "propertyDescription": "সম্পত্তির বিবরণ - দাগ নম্বর, খতিয়ান, জমির পরিমাণ"
+    "buyerFather": "ক্রেতার পিতার নাম",
+    "buyerAddress": "ক্রেতার ঠিকানা",
+    "propertyDescription": "সম্পত্তির বিস্তারিত বিবরণ",
+    "dagNo": "দাগ নম্বর",
+    "khatianNo": "খতিয়ান নম্বর (CS/SA/RS/BS)",
+    "landAmount": "জমির পরিমাণ",
+    "landType": "জমির ধরন (আবাদি/অনাবাদি/পুকুর/বাস্তুভিটা)",
+    "boundaries": {
+      "north": "উত্তর সীমানা",
+      "south": "দক্ষিণ সীমানা",
+      "east": "পূর্ব সীমানা",
+      "west": "পশ্চিম সীমানা"
+    }
   },
-  "goodPoints": ["বিস্তারিত ভালো দিক"],
-  "badPoints": ["বিস্তারিত সমস্যা"],
-  "criticalIssues": ["গুরুতর সমস্যা - deal breaker"],
-  "missingInfo": ["কী কী ডকুমেন্ট নেই এবং কেন দরকার"],
+
+  "pageByPageAnalysis": [
+    {
+      "pageNumber": 1,
+      "pageType": "এই পাতার ধরন (প্রথম পাতা/শিডিউল/সাক্ষী/স্বাক্ষর ইত্যাদি)",
+      "keyFindings": ["এই পাতায় যা পাওয়া গেছে"],
+      "extractedText": "গুরুত্বপূর্ণ টেক্সট যা পড়া গেছে",
+      "issues": ["এই পাতায় সমস্যা"],
+      "readabilityScore": 0-100
+    }
+  ],
+
+  "riskBreakdown": {
+    "legal": {
+      "score": 0-100,
+      "issues": ["আইনগত সমস্যা"],
+      "details": "বিস্তারিত"
+    },
+    "ownership": {
+      "score": 0-100,
+      "issues": ["মালিকানা সংক্রান্ত সমস্যা"],
+      "details": "বিস্তারিত"
+    },
+    "financial": {
+      "score": 0-100,
+      "issues": ["আর্থিক সমস্যা"],
+      "details": "বিস্তারিত"
+    },
+    "procedural": {
+      "score": 0-100,
+      "issues": ["পদ্ধতিগত সমস্যা"],
+      "details": "বিস্তারিত"
+    }
+  },
+
+  "redFlags": [
+    {
+      "severity": "Critical" | "High" | "Medium" | "Low",
+      "title": "সমস্যার শিরোনাম",
+      "description": "বিস্তারিত ব্যাখ্যা",
+      "pageReference": "কোন পাতায়",
+      "recommendation": "কী করবেন"
+    }
+  ],
+
+  "standardComparison": {
+    "presentItems": ["দলিলে যা আছে ✓"],
+    "missingItems": ["দলিলে যা নেই ✗"],
+    "unusualItems": ["অস্বাভাবিক বিষয় ⚠"],
+    "comparisonNote": "একটি আদর্শ দলিলের সাথে তুলনা"
+  },
+
+  "chainOfTitle": {
+    "isComplete": true | false,
+    "analysis": "মালিকানার ধারাবাহিকতার বিশ্লেষণ",
+    "timeline": [
+      {
+        "date": "তারিখ",
+        "event": "কী হয়েছিল",
+        "from": "কার কাছ থেকে",
+        "to": "কার কাছে",
+        "deedReference": "দলিল রেফারেন্স"
+      }
+    ],
+    "gaps": ["যেখানে তথ্য নেই বা অস্পষ্ট"]
+  },
+
+  "legalClausesAnalysis": [
+    {
+      "clauseNumber": "ধারা নম্বর",
+      "originalText": "মূল টেক্সট",
+      "simpleMeaning": "সহজ বাংলায় অর্থ",
+      "buyerImpact": "Favorable" | "Unfavorable" | "Neutral",
+      "warning": "সতর্কতা (যদি থাকে)"
+    }
+  ],
+
+  "hiddenRisks": [
+    {
+      "risk": "ঝুঁকির বর্ণনা",
+      "probability": "High" | "Medium" | "Low",
+      "impact": "High" | "Medium" | "Low",
+      "mitigation": "কীভাবে এড়াবেন"
+    }
+  ],
+
+  "expertVerdict": {
+    "recommendation": "Buy" | "Buy with Caution" | "Negotiate" | "Do Not Buy" | "Need More Documents",
+    "confidence": 0-100,
+    "summary": "২-৩ লাইনে চূড়ান্ত মতামত",
+    "keyReasons": ["মূল কারণগুলো"]
+  },
+
   "buyerProtection": {
-    "verdict": "Buyer Safe" | "Seller Favored" | "Violated" | "Neutral",
-    "details": "বিস্তারিত ব্যাখ্যা"
+    "verdict": "Buyer Safe" | "Seller Favored" | "Risky" | "Neutral",
+    "score": 0-100,
+    "details": "বিস্তারিত ব্যাখ্যা",
+    "protectionClauses": ["ক্রেতাকে সুরক্ষা দেয় এমন ধারা"],
+    "riskClauses": ["ক্রেতার জন্য ঝুঁকিপূর্ণ ধারা"]
   },
-  "chainOfTitleAnalysis": "মালিকানার ধারাবাহিকতার বিস্তারিত বিশ্লেষণ",
-  "chainOfTitleTimeline": [{"date": "তারিখ", "event": "কী ঘটেছে"}],
-  "legalClauses": ["দলিলে উল্লেখিত শর্তাবলী এবং তার অর্থ সহজ বাংলায়"],
-  "hiddenRisks": ["যেসব ঝুঁকি সরাসরি দেখা যাচ্ছে না কিন্তু আছে"],
-  "nextSteps": ["ধাপে ধাপে পরামর্শ"]
+
+  "actionItems": [
+    {
+      "priority": "Urgent" | "Important" | "Optional",
+      "action": "কী করতে হবে",
+      "reason": "কেন করতে হবে",
+      "deadline": "কখন করতে হবে"
+    }
+  ],
+
+  "documentsNeeded": [
+    {
+      "document": "ডকুমেন্টের নাম",
+      "purpose": "কেন দরকার",
+      "whereToGet": "কোথায় পাবেন",
+      "priority": "Essential" | "Recommended" | "Optional"
+    }
+  ],
+
+  "goodPoints": ["ভালো দিক"],
+  "badPoints": ["খারাপ দিক"],
+  "criticalIssues": ["গুরুতর সমস্যা"],
+  "nextSteps": ["পরবর্তী পদক্ষেপ"]
 }
 
-## LANGUAGE
-- Write EVERYTHING in Bengali (Bangla)
-- Use simple language that common people can understand
-- Be specific, give examples, reference page numbers`;
+## IMPORTANT RULES
+1. Fill ALL fields - leave empty string "" if not found, but try hard to find
+2. Be EXTREMELY detailed in pageByPageAnalysis
+3. ALWAYS provide expert verdict with clear recommendation
+4. Reference specific page numbers everywhere
+5. Write in simple Bengali that common people understand
+6. Be honest about what you couldn't read (low readabilityScore)
+7. Compare with standard Bangladesh property deed format`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -88,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Rate limiting
   const clientId = getClientId(req);
-  const limit = rateLimit(clientId, 30, 15 * 60 * 1000); // 30 requests per 15 min for PRO
+  const limit = rateLimit(clientId, 30, 15 * 60 * 1000);
   
   if (!limit.allowed) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
@@ -113,7 +232,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Build content parts
     const parts: any[] = [];
     
-    for (const doc of documents) {
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
       const cleanBase64 = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
       parts.push({
         inlineData: {
@@ -121,16 +241,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           data: cleanBase64
         }
       });
-      console.log(`📎 Added: ${doc.name} (${doc.mimeType})`);
+      console.log(`📎 Added page ${i + 1}: ${doc.name} (${doc.mimeType})`);
     }
     
     parts.push({
-      text: `PRO ANALYSIS: Analyze these property documents with maximum detail. Read every page carefully including old handwriting. Return valid JSON in Bengali.`
+      text: `PRO ANALYSIS REQUEST:
+      
+Total documents/pages: ${documents.length}
+
+Instructions:
+1. Analyze EACH page separately in pageByPageAnalysis array
+2. Provide complete risk breakdown by category
+3. List all red flags with severity
+4. Compare with standard deed format
+5. Give expert verdict with clear Buy/Don't Buy recommendation
+6. Be extremely detailed - this is PRO level analysis
+
+Return ONLY valid JSON. Write everything in Bengali.`
     });
 
-    console.log('🤖 Calling Gemini 1.5 Pro...');
+    console.log('🤖 Calling Gemini 1.5 Pro for deep analysis...');
     
-    // Use Gemini 1.5 Pro for better analysis
     const response = await ai.models.generateContent({
       model: 'gemini-1.5-pro',
       contents: { parts },
@@ -155,34 +286,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Empty response from AI service');
     }
 
-    const jsonResult = JSON.parse(text) as AnalysisResult;
+    const result = JSON.parse(text);
     
-    const result: AnalysisResult = {
-      riskScore: jsonResult.riskScore || 50,
-      riskLevel: jsonResult.riskLevel || 'Medium Risk',
-      documentType: jsonResult.documentType || 'দলিল',
-      summary: {
-        mouza: jsonResult.summary?.mouza || '',
-        deedNo: jsonResult.summary?.deedNo || '',
-        date: jsonResult.summary?.date || '',
-        propertyAmount: jsonResult.summary?.propertyAmount || '',
-        sellerName: jsonResult.summary?.sellerName || '',
-        buyerName: jsonResult.summary?.buyerName || '',
-        propertyDescription: jsonResult.summary?.propertyDescription || '',
-      },
-      goodPoints: jsonResult.goodPoints || [],
-      badPoints: jsonResult.badPoints || [],
-      criticalIssues: jsonResult.criticalIssues || [],
-      missingInfo: jsonResult.missingInfo || [],
-      buyerProtection: jsonResult.buyerProtection || { verdict: 'Neutral', details: '' },
-      chainOfTitleAnalysis: jsonResult.chainOfTitleAnalysis || '',
-      chainOfTitleTimeline: jsonResult.chainOfTitleTimeline || [],
-      legalClauses: jsonResult.legalClauses || [],
-      hiddenRisks: jsonResult.hiddenRisks || [],
-      nextSteps: jsonResult.nextSteps || []
-    };
+    // Ensure proAnalysis flag is set
+    result.proAnalysis = true;
 
-    console.log('✅ PRO Analysis completed');
+    console.log('✅ PRO Analysis completed with', 
+      result.pageByPageAnalysis?.length || 0, 'pages analyzed,',
+      result.redFlags?.length || 0, 'red flags found');
+    
     return res.json(result);
 
   } catch (error: any) {
@@ -195,4 +307,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: error.message || "Failed to analyze documents" });
   }
 }
-

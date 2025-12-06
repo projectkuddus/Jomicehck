@@ -283,8 +283,13 @@ const AppContent: React.FC = () => {
     };
   }, [files, user, profile, authLoading, selectedTier]);
 
-  const handleStartAnalysis = async () => {
+  // FIXED: Accept tier as parameter to avoid React state timing issues
+  const handleStartAnalysis = async (tierOverride?: 'plus' | 'pro') => {
+    // Use the passed tier or fall back to state (for payment success callback)
+    const tier = tierOverride || selectedTier;
+    
     console.log('🔍 Analyze button clicked:', {
+      tier,
       filesCount: files.length,
       needsLogin: priceCalculation.needsLogin,
       isLoading: priceCalculation.isLoading,
@@ -321,44 +326,41 @@ const AppContent: React.FC = () => {
         await refreshProfile();
         // Wait a moment for state to update
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Re-check - if still no profile, show error
-        // Note: We can't check profile here directly, but refreshProfile should update it
-        // The next render will have the updated profile
       }
     }
     
     // CRITICAL FIX: Refresh profile before checking credits to prevent stale data
-    // This ensures we have latest credits after payment
     if (user && profile && refreshProfile) {
       try {
         console.log('🔄 Refreshing profile to get latest credits...');
         await refreshProfile();
-        // After refresh, priceCalculation will recalculate with new profile
-        // But we need to check again after a brief moment for state to update
         await new Promise(resolve => setTimeout(resolve, 200));
       } catch (refreshError) {
         console.error('⚠️ Profile refresh failed, continuing with current state:', refreshError);
       }
     }
     
+    // Calculate credits needed for the selected tier
+    const creditsNeeded = tier === 'pro' ? priceCalculation.proCredits : priceCalculation.plusCredits;
+    const canAfford = tier === 'pro' ? priceCalculation.canAffordPro : priceCalculation.canAffordPlus;
+    
     // Re-check affordability after potential refresh
-    if (!priceCalculation.canAfford) {
-      console.log('💳 User needs more credits');
+    if (!canAfford) {
+      console.log('💳 User needs more credits for', tier.toUpperCase());
       setIsPaymentOpen(true);
       return;
     }
     
     try {
-      console.log('💰 Deducting credits...', priceCalculation.creditsNeeded);
-      // Deduct credits and run analysis (useCredits will re-check from database)
-      const success = await useCredits(priceCalculation.creditsNeeded);
+      console.log('💰 Deducting credits...', creditsNeeded, 'for', tier.toUpperCase());
+      // Deduct credits and run analysis
+      const success = await useCredits(creditsNeeded);
       console.log('💰 Credit deduction result:', success);
       
       if (success) {
-        console.log('✅ Credits deducted, starting analysis...');
-        runAnalysis();
+        console.log('✅ Credits deducted, starting', tier.toUpperCase(), 'analysis...');
+        runAnalysis(tier); // Pass tier directly!
       } else {
-        // If credit deduction failed, show error
         console.error('❌ Credit deduction failed');
         setAnalysis({
           isLoading: false,
@@ -381,12 +383,13 @@ const AppContent: React.FC = () => {
 
   const handlePaymentSuccess = () => {
     setIsPaymentOpen(false);
-    // After buying credits, try analysis again
-    handleStartAnalysis();
+    // After buying credits, try analysis again with current selected tier
+    handleStartAnalysis(selectedTier);
   };
 
-  const runAnalysis = async () => {
-    console.log('🚀 Starting analysis...', { filesCount: files.length });
+  // FIXED: Accept tier as parameter to ensure correct API is called
+  const runAnalysis = async (tier: 'plus' | 'pro') => {
+    console.log('🚀 Starting analysis...', { filesCount: files.length, tier });
     
     if (files.length === 0) {
       console.warn('⚠️ No files to analyze');
@@ -424,8 +427,8 @@ const AppContent: React.FC = () => {
     setActiveTab('report'); 
 
     try {
-      console.log(`📤 Calling analyzeDocuments API (${selectedTier.toUpperCase()})...`);
-      const resultData = await analyzeDocuments(files, selectedTier, (current, total, currentBatch, totalBatches) => {
+      console.log(`📤 Calling analyzeDocuments API (${tier.toUpperCase()})...`);
+      const resultData = await analyzeDocuments(files, tier, (current, total, currentBatch, totalBatches) => {
         // Update progress in real-time
         console.log('📊 Analysis progress:', { current, total, currentBatch, totalBatches });
         setAnalysis(prev => ({
@@ -631,7 +634,7 @@ const AppContent: React.FC = () => {
                       <div className="space-y-3">
                         {/* PLUS Button */}
                         <button
-                          onClick={() => { setSelectedTier('plus'); handleStartAnalysis(); }}
+                          onClick={() => { setSelectedTier('plus'); handleStartAnalysis('plus'); }}
                           disabled={analysis.isLoading || priceCalculation.isLoading || !priceCalculation.canAffordPlus}
                           className={`
                             w-full py-3 px-4 rounded-xl flex items-center justify-between text-white font-bold shadow-md transition-all
@@ -655,7 +658,7 @@ const AppContent: React.FC = () => {
                         
                         {/* PRO Button */}
                         <button
-                          onClick={() => { setSelectedTier('pro'); handleStartAnalysis(); }}
+                          onClick={() => { setSelectedTier('pro'); handleStartAnalysis('pro'); }}
                           disabled={analysis.isLoading || priceCalculation.isLoading || !priceCalculation.canAffordPro}
                           className={`
                             w-full py-3 px-4 rounded-xl flex items-center justify-between text-white font-bold shadow-md transition-all

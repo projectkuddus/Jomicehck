@@ -742,38 +742,39 @@ const AppContent: React.FC = () => {
             </section>
           </>
         ) : (
-          /* Static Pages (Full Width) */
+          /* Static Pages (Full Width) - Footer inside scroll container */
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-white w-full">
-            {currentPage === 'how-it-works' && <HowItWorks />}
-            {currentPage === 'pricing' && <Pricing />}
-            {currentPage === 'support' && <Support />}
-            {currentPage === 'terms' && <Terms />}
-            {currentPage === 'privacy' && <Privacy />}
-            {currentPage === 'blog' && (
-              <BlogList 
-                onSelectPost={(slug) => {
-                  setBlogSlug(slug);
-                  setCurrentPage('blog-article');
-                }}
-                onBack={() => setCurrentPage('home')}
-              />
-            )}
-            {currentPage === 'blog-article' && (
-              <BlogArticle 
-                slug={blogSlug}
-                onBack={() => setCurrentPage('home')}
-                onBackToList={() => setCurrentPage('blog')}
-              />
-            )}
+            <div className="min-h-full flex flex-col">
+              <div className="flex-1">
+                {currentPage === 'how-it-works' && <HowItWorks />}
+                {currentPage === 'pricing' && <Pricing />}
+                {currentPage === 'support' && <Support />}
+                {currentPage === 'terms' && <Terms />}
+                {currentPage === 'privacy' && <Privacy />}
+                {currentPage === 'blog' && (
+                  <BlogList 
+                    onSelectPost={(slug) => {
+                      setBlogSlug(slug);
+                      setCurrentPage('blog-article');
+                    }}
+                    onBack={() => setCurrentPage('home')}
+                  />
+                )}
+                {currentPage === 'blog-article' && (
+                  <BlogArticle 
+                    slug={blogSlug}
+                    onBack={() => setCurrentPage('home')}
+                    onBackToList={() => setCurrentPage('blog')}
+                  />
+                )}
+              </div>
+              {/* Footer scrolls with content */}
+              <Footer onNavigate={setCurrentPage} />
+            </div>
           </div>
         )}
 
       </main>
-
-      {/* Footer - Only show on static pages */}
-      {currentPage !== 'home' && (
-        <Footer onNavigate={setCurrentPage} />
-      )}
 
       {/* Debug Component (only in development) */}
       {!import.meta.env.PROD && <AuthDebug />}

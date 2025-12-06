@@ -131,8 +131,20 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     console.warn('⚠️ Risk score increased due to multiple deeds:', avgRiskScore);
   }
 
+  // Merge PRO-specific fields from all results
+  const allPageAnalysis = results.flatMap(r => r.pageByPageAnalysis || []);
+  const allRedFlags = results.flatMap(r => r.redFlags || []);
+  const allActionItems = results.flatMap(r => r.actionItems || []);
+  const allDocumentsNeeded = results.flatMap(r => r.documentsNeeded || []);
+  const allLegalClausesAnalysis = results.flatMap(r => r.legalClausesAnalysis || []);
+
+  // Check if any result is PRO
+  const isPro = results.some(r => r.proAnalysis === true);
+
   return {
     ...baseResult,
+    // Preserve PRO flag
+    proAnalysis: isPro,
     riskScore: avgRiskScore,
     riskLevel: maxRiskLevel,
     documentType: results.length > 1 ? `${results.length} Documents` : baseResult.documentType,
@@ -143,6 +155,18 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     nextSteps: Array.from(allNextSteps),
     chainOfTitleTimeline: allTimelineEvents,
     chainOfTitleAnalysis: results.map(r => r.chainOfTitleAnalysis).join('\n\n'),
+    // PRO-specific merged fields
+    pageByPageAnalysis: allPageAnalysis.length > 0 ? allPageAnalysis : undefined,
+    redFlags: allRedFlags.length > 0 ? allRedFlags : undefined,
+    actionItems: allActionItems.length > 0 ? allActionItems : undefined,
+    documentsNeeded: allDocumentsNeeded.length > 0 ? allDocumentsNeeded : undefined,
+    legalClausesAnalysis: allLegalClausesAnalysis.length > 0 ? allLegalClausesAnalysis : undefined,
+    // Use first result's PRO fields if available
+    riskBreakdown: results.find(r => r.riskBreakdown)?.riskBreakdown,
+    standardComparison: results.find(r => r.standardComparison)?.standardComparison,
+    expertVerdict: results.find(r => r.expertVerdict)?.expertVerdict,
+    chainOfTitle: results.find(r => r.chainOfTitle)?.chainOfTitle,
+    confidenceScore: results.find(r => r.confidenceScore)?.confidenceScore,
   };
 };
 

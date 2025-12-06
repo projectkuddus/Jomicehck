@@ -10,8 +10,8 @@
 - **Primary**: `gemini-3-pro-preview` (Gemini 3 Pro - MOST ADVANCED) 🚀
 - **Fallback 1**: `gemini-3-pro-deep-think` (Deep Think mode)
 - **Fallback 2**: `gemini-2.0-pro-exp` (Gemini 2.0 Pro)
-- **Fallback 3**: `gemini-1.5-pro` (Stable Pro)
-- **Fallback 4**: `gpt-5.1` (if all Gemini fail)
+- **Fallback 3**: `gpt-5.1` (if all Gemini fail)
+- **Removed**: `gemini-1.5-pro` (not in fallback chain)
 
 ---
 
@@ -33,8 +33,8 @@
 - Gemini 3 Pro Preview ✅
 - Gemini 3 Pro Deep Think ✅
 - Gemini 2.0 Pro Exp ✅
-- Gemini 1.5 Pro ✅
 - GPT-5.1 (fallback) ✅
+- ~~Gemini 1.5 Pro~~ (removed from PRO fallback)
 
 ✅ **API Keys**:
 - `GEMINI_API_KEY` - Should be in Vercel

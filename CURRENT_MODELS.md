@@ -16,8 +16,7 @@
 1. **Primary**: `gemini-3-pro-preview` (Gemini 3 Pro - MOST ADVANCED) 🚀
 2. **Fallback 1**: `gemini-3-pro-deep-think` (Gemini 3 Pro Deep Think - advanced reasoning)
 3. **Fallback 2**: `gemini-2.0-pro-exp` (Gemini 2.0 Pro Experimental)
-4. **Fallback 3**: `gemini-1.5-pro` (Gemini 1.5 Pro - stable)
-5. **Fallback 4**: `gpt-5.1` (if all Gemini models fail and GPT-5.1 is available)
+4. **Fallback 3**: `gpt-5.1` (if all Gemini models fail and GPT-5.1 is available)
 
 **Status**: ✅ **ACTIVE** - Now using Gemini 3 Pro (latest and most advanced)
 
@@ -33,7 +32,7 @@
 
 ### Model Priority:
 - **PLUS**: `gemini-2.0-pro-exp` → `gpt-5.1` (NO GPT-4o)
-- **PRO**: `gemini-3-pro-preview` → `gemini-3-pro-deep-think` → `gemini-2.0-pro-exp` → `gemini-1.5-pro` → `gpt-5.1` (NO GPT-4o)
+- **PRO**: `gemini-3-pro-preview` → `gemini-3-pro-deep-think` → `gemini-2.0-pro-exp` → `gpt-5.1` (NO GPT-4o, NO gemini-1.5-pro)
 
 ---
 

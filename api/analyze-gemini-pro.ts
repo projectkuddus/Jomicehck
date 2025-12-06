@@ -223,13 +223,13 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
     });
 
     // PRO: Use ONLY MOST ADVANCED models - NO LESS
-    // Priority: Gemini 3 Pro Preview > 2.0 Pro Exp > 1.5 Pro > GPT-5.1
-    // Gemini 3 Pro is now available as preview
+    // Priority: Gemini 3 Pro Preview > 3 Pro Deep Think > 2.0 Pro Exp > GPT-5.1
+    // NO gemini-1.5-pro (removed as requested)
     const modelPriority = [
       'gemini-3-pro-preview',   // MOST ADVANCED - Gemini 3 Pro (preview)
       'gemini-3-pro-deep-think', // Gemini 3 Pro Deep Think (if available)
       'gemini-2.0-pro-exp',     // Gemini 2.0 Pro Experimental
-      'gemini-1.5-pro',         // Stable Pro model (excellent for Bengali)
+      // gemini-1.5-pro REMOVED - not in fallback chain
     ];
     
     let result: any = null;

@@ -406,26 +406,10 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           });
         }
         
-              // Try GPT-5.1 first, fallback to GPT-4o if not available
-              let openaiModel = 'gpt-5.1';
-              try {
-                // Test if GPT-5.1 is available
-                const testResponse = await openai.chat.completions.create({
-                  model: 'gpt-5.1',
-                  messages: [{ role: 'user', content: 'test' }],
-                  max_tokens: 1,
-                });
-                console.log('✅ GPT-5.1 is available');
-              } catch (e: any) {
-                if (e.message?.includes('model') || e.message?.includes('not found')) {
-                  console.warn('⚠️ GPT-5.1 not available, using GPT-4o instead');
-                  openaiModel = 'gpt-4o'; // Fallback to GPT-4o
-                }
-              }
-              
-              console.log(`🤖 Trying ${openaiModel} (most advanced OpenAI model)...`);
+              // ONLY GPT-5.1 - NO GPT-4o fallback (no compromise)
+              console.log('🤖 PRO: Trying GPT-5.1 (most advanced OpenAI model, NO fallback)...');
               const response = await openai.chat.completions.create({
-                model: openaiModel, // GPT-5.1 or GPT-4o fallback
+                model: 'gpt-5.1', // ONLY GPT-5.1 - no compromise
           messages: [
             { role: "system", content: SYSTEM_INSTRUCTION },
             { role: "user", content: imageContents }
@@ -441,7 +425,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           // Build same result structure
           const finalResult = {
             proAnalysis: true,
-            modelUsed: openaiModel, // GPT-5.1 or GPT-4o (whichever is available)
+            modelUsed: 'gpt-5.1', // ONLY GPT-5.1 - no compromise
             riskScore: rawResult.riskScore ?? 50,
             riskLevel: rawResult.riskLevel || 'Medium Risk',
             confidenceScore: rawResult.expertVerdict?.confidence || 90,
@@ -492,14 +476,18 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           return res.json(finalResult);
         }
       } catch (gptError: any) {
-        console.error('❌ GPT-5.1 also failed:', gptError.message);
+        console.error('❌ GPT-5.1 failed:', gptError.message);
+        // NO fallback to GPT-4o - fail with clear error
+        return res.status(500).json({ 
+          error: `GPT-5.1 not available: ${gptError.message}. Please ensure your OpenAI account has access to GPT-5.1. No fallback to older models.` 
+        });
       }
     }
     
     // If all advanced models fail
-    console.error('❌ All advanced models (Gemini 3.0, GPT-5.1) failed');
+    console.error('❌ All advanced models (Gemini 3.0 Pro, GPT-5.1) failed');
     return res.status(500).json({ 
-      error: `All advanced models failed. Gemini 3.0 Pro or GPT-5.1 required for PRO analysis.` 
+      error: `All advanced models failed. Gemini 3.0 Pro or GPT-5.1 required for PRO analysis. No fallback to older models.` 
     });
   }
 

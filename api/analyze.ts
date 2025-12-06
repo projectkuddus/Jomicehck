@@ -74,43 +74,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Use Gemini ONLY - best for Bengali
     try {
-      try {
-        const { GoogleGenAI } = await import('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      
+      // Build parts with PDF extracted text (no Vision OCR for PLUS)
+      const extractedTexts: string[] = [];
+      const parts: any[] = [];
+
+      for (let i = 0; i < documents.length; i++) {
+        const doc = documents[i];
         
-        // Build parts with PDF extracted text (no Vision OCR for PLUS)
-        const extractedTexts: string[] = [];
-        const parts: any[] = [];
-
-        for (let i = 0; i < documents.length; i++) {
-          const doc = documents[i];
-          
-          // Use PDF extracted text if available
-          if (doc.extractedText && doc.extractedText.length > 10) {
-            extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
-            console.log(`📝 Using PDF text for ${doc.name} (${doc.extractedText.length} chars)`);
-          }
-          
-          // Add image
-          const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
-          parts.push({
-            inlineData: {
-              data: base64Data,
-              mimeType: doc.mimeType
-            }
-          });
+        // Use PDF extracted text if available
+        if (doc.extractedText && doc.extractedText.length > 10) {
+          extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
+          console.log(`📝 Using PDF text for ${doc.name} (${doc.extractedText.length} chars)`);
         }
-
-        // Add extracted text as context
-        if (extractedTexts.length > 0) {
-          parts.unshift({
-            text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}\n\n---\n\nএই টেক্সট PDF থেকে সরাসরি extract করা। ছবি ও টেক্সট মিলিয়ে সঠিক তথ্য দিন।`
-          });
-        }
-
-        // Add analysis prompt
+        
+        // Add image
+        const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
         parts.push({
-          text: `PLUS বিশ্লেষণ: ${documents.length}টি ডকুমেন্ট
+          inlineData: {
+            data: base64Data,
+            mimeType: doc.mimeType
+          }
+        });
+      }
+
+      // Add extracted text as context
+      if (extractedTexts.length > 0) {
+        parts.unshift({
+          text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}\n\n---\n\nএই টেক্সট PDF থেকে সরাসরি extract করা। ছবি ও টেক্সট মিলিয়ে সঠিক তথ্য দিন।`
+        });
+      }
+
+      // Add analysis prompt
+      parts.push({
+        text: `PLUS বিশ্লেষণ: ${documents.length}টি ডকুমেন্ট
 
 আপনার ক্লায়েন্ট এই সম্পত্তি কিনতে বড় অঙ্কের টাকা খরচ করতে যাচ্ছেন। সঠিক তথ্য দিন।
 
@@ -158,164 +157,205 @@ JSON ফরম্যাটে উত্তর দিন:
   "buyerProtection": {"verdict": "Buyer Safe" | "Risky" | "Neutral", "score": 0-100, "details": ""},
   "nextSteps": ["পরবর্তী পদক্ষেপ"]
 }`
-        });
+      });
 
-        // PLUS: Gemini 2.0 Pro Exp → GPT-5.1 (reliable fallback for critical analysis)
-        // Try Gemini first (best for Bengali), fallback to GPT-5.1 if needed
-        let result: any = null;
-        let usedModel = '';
-        let lastError: any = null;
-        
-        // Try Gemini 2.0 Pro Exp first
-        try {
-          console.log(`🤖 PLUS: Trying Gemini 2.0 Pro Exp (best for Bengali)...`);
-          result = await ai.models.generateContent({
-            model: 'gemini-2.0-pro-exp',
-            contents: { parts },
+      // PLUS: Use ONLY Gemini 2.0 Pro Exp (latest, best for Bengali)
+      // NO fallback to older Gemini models
+      console.log(`🤖 PLUS: Using Gemini 2.0 Pro Exp (latest, best for Bengali, NO older models)...`);
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.0-pro-exp',
+        contents: { parts },
             config: {
               systemInstruction: SYSTEM_INSTRUCTION,
               responseMimeType: 'application/json',
               temperature: 0.1,
             },
           });
-          usedModel = 'gemini-2.0-pro-exp';
-          console.log(`✅ Gemini 2.0 Pro Exp responded successfully`);
-        } catch (geminiError: any) {
-          lastError = geminiError;
-          console.warn(`⚠️ Gemini 2.0 Pro Exp failed: ${geminiError.message}`);
-          console.log(`🔄 Falling back to GPT-5.1 (most advanced OpenAI)...`);
           
-          // Fallback to GPT-5.1
-          const openaiKey = process.env.OPENAI_API_KEY;
-          if (openaiKey) {
-            try {
-              const { default: OpenAI } = await import('openai');
-              const openai = new OpenAI({ apiKey: openaiKey });
-              
-              // Convert to OpenAI format
-              const imageContents: any[] = [];
-              const extractedTexts: string[] = [];
-              
-              for (let i = 0; i < documents.length; i++) {
-                const doc = documents[i];
-                const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
-                
-                if (doc.extractedText && doc.extractedText.length > 10) {
-                  extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
-                }
-                
-                imageContents.push({
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${doc.mimeType};base64,${base64Data}`,
-                    detail: "high"
-                  }
-                });
-              }
-              
-              if (extractedTexts.length > 0) {
-                imageContents.unshift({
-                  type: "text",
-                  text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}`
-                });
-              }
-              
-              // Add PLUS prompt
-              const lastTextPart = parts.findLast((p: any) => p.text);
-              if (lastTextPart && lastTextPart.text) {
-                imageContents.push({
-                  type: "text",
-                  text: lastTextPart.text
-                });
-              }
-              
-              // Try GPT-5.1 first, fallback to GPT-4o if not available
-              let openaiModel = 'gpt-5.1';
-              try {
-                // Test if GPT-5.1 is available
-                const testResponse = await openai.chat.completions.create({
-                  model: 'gpt-5.1',
-                  messages: [{ role: 'user', content: 'test' }],
-                  max_tokens: 1,
-                });
-                console.log('✅ GPT-5.1 is available');
-              } catch (e: any) {
-                if (e.message?.includes('model') || e.message?.includes('not found')) {
-                  console.warn('⚠️ GPT-5.1 not available, using GPT-4o instead');
-                  openaiModel = 'gpt-4o'; // Fallback to GPT-4o
-                }
-              }
-              
-              const response = await openai.chat.completions.create({
-                model: openaiModel, // GPT-5.1 or GPT-4o fallback
-                messages: [
-                  { role: "system", content: SYSTEM_INSTRUCTION },
-                  { role: "user", content: imageContents }
-                ],
-                max_tokens: 4096,
-                temperature: 0.1,
-                response_format: { type: "json_object" }
-              });
-              
-              const text = response.choices[0]?.message?.content;
-              if (text) {
-                // Parse and return (same structure as Gemini)
-                const rawResult = JSON.parse(text);
-                const finalResult = {
-                  modelUsed: 'gpt-5.1',
-                  riskScore: rawResult.riskScore ?? 50,
-                  riskLevel: rawResult.riskLevel || 'Medium Risk',
-                  documentType: rawResult.documentType || 'দলিল',
-                  documentTypes: rawResult.documentTypes || [],
-                  isSameProperty: rawResult.isSameProperty ?? true,
-                  propertyMatchReason: rawResult.propertyMatchReason || '',
-                  summary: {
-                    mouza: rawResult.summary?.mouza || '',
-                    jla: rawResult.summary?.jla || '',
-                    thana: rawResult.summary?.thana || '',
-                    district: rawResult.summary?.district || '',
-                    deedNo: rawResult.summary?.deedNo || '',
-                    date: rawResult.summary?.date || '',
-                    registrationOffice: rawResult.summary?.registrationOffice || '',
-                    propertyAmount: rawResult.summary?.propertyAmount || '',
-                    sellerName: rawResult.summary?.sellerName || '',
-                    sellerFather: rawResult.summary?.sellerFather || '',
-                    buyerName: rawResult.summary?.buyerName || '',
-                    buyerFather: rawResult.summary?.buyerFather || '',
-                    dagNo: rawResult.summary?.dagNo || '',
-                    khatianNo: rawResult.summary?.khatianNo || '',
-                    landAmount: rawResult.summary?.landAmount || '',
-                    landType: rawResult.summary?.landType || '',
-                    boundaries: rawResult.summary?.boundaries || null,
-                  },
-                  goodPoints: rawResult.goodPoints || [],
-                  badPoints: rawResult.badPoints || [],
-                  criticalIssues: rawResult.criticalIssues || [],
-                  missingInfo: rawResult.missingInfo || [],
-                  chainOfTitleAnalysis: rawResult.chainOfTitleAnalysis || '',
-                  chainOfTitleTimeline: rawResult.chainOfTitleTimeline || [],
-                  buyerProtection: {
-                    verdict: rawResult.buyerProtection?.verdict || 'Neutral',
-                    score: rawResult.buyerProtection?.score,
-                    details: rawResult.buyerProtection?.details || '',
-                  },
-                  nextSteps: rawResult.nextSteps || [],
-                  verificationChecklist: rawResult.verificationChecklist || [],
-                };
-                
-                console.log('✅ PLUS Analysis completed with GPT-5.1 (fallback)');
-                return res.json(finalResult);
-              }
-            } catch (gptError: any) {
-              console.error('❌ GPT-5.1 also failed:', gptError.message);
-              lastError = gptError;
-            }
+          console.log(`✅ Gemini 2.0 Pro Exp responded successfully`);
+          
+          const text = result.text || '';
+          if (!text) {
+            throw new Error('Empty response from Gemini');
           }
+          
+          let rawResult;
+          try {
+            rawResult = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+          } catch (e) {
+            throw new Error('Invalid JSON from Gemini');
+          }
+
+          const finalResult = {
+            modelUsed: 'gemini-2.0-pro-exp', // ONLY latest Gemini 2.0 Pro
+            riskScore: rawResult.riskScore ?? 50,
+            riskLevel: rawResult.riskLevel || 'Medium Risk',
+            documentType: rawResult.documentType || 'দলিল',
+            documentTypes: rawResult.documentTypes || [],
+            isSameProperty: rawResult.isSameProperty ?? true,
+            propertyMatchReason: rawResult.propertyMatchReason || '',
+            summary: {
+              mouza: rawResult.summary?.mouza || '',
+              jla: rawResult.summary?.jla || '',
+              thana: rawResult.summary?.thana || '',
+              district: rawResult.summary?.district || '',
+              deedNo: rawResult.summary?.deedNo || '',
+              date: rawResult.summary?.date || '',
+              registrationOffice: rawResult.summary?.registrationOffice || '',
+              propertyAmount: rawResult.summary?.propertyAmount || '',
+              sellerName: rawResult.summary?.sellerName || '',
+              sellerFather: rawResult.summary?.sellerFather || '',
+              buyerName: rawResult.summary?.buyerName || '',
+              buyerFather: rawResult.summary?.buyerFather || '',
+              dagNo: rawResult.summary?.dagNo || '',
+              khatianNo: rawResult.summary?.khatianNo || '',
+              landAmount: rawResult.summary?.landAmount || '',
+              landType: rawResult.summary?.landType || '',
+              boundaries: rawResult.summary?.boundaries || null,
+            },
+            goodPoints: rawResult.goodPoints || [],
+            badPoints: rawResult.badPoints || [],
+            criticalIssues: rawResult.criticalIssues || [],
+            missingInfo: rawResult.missingInfo || [],
+            chainOfTitleAnalysis: rawResult.chainOfTitleAnalysis || '',
+            chainOfTitleTimeline: rawResult.chainOfTitleTimeline || [],
+            buyerProtection: {
+              verdict: rawResult.buyerProtection?.verdict || 'Neutral',
+              score: rawResult.buyerProtection?.score,
+              details: rawResult.buyerProtection?.details || '',
+            },
+            nextSteps: rawResult.nextSteps || [],
+            verificationChecklist: rawResult.verificationChecklist || [],
+          };
+          
+          console.log('✅ PLUS Analysis completed with Gemini 2.0 Pro Exp');
+          return res.json(finalResult);
+          
+    } catch (geminiError: any) {
+      console.warn(`⚠️ Gemini 2.0 Pro Exp failed: ${geminiError.message}`);
+      console.log(`🔄 Falling back to GPT-5.1 (ONLY fallback, NO GPT-4o)...`);
+      
+      // ONLY fallback to GPT-5.1 - NO GPT-4o
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        try {
+          const { default: OpenAI } = await import('openai');
+          const openai = new OpenAI({ apiKey: openaiKey });
+          
+          // Convert to OpenAI format
+          const imageContents: any[] = [];
+          const extractedTexts: string[] = [];
+          
+          for (let i = 0; i < documents.length; i++) {
+            const doc = documents[i];
+            const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
+            
+            if (doc.extractedText && doc.extractedText.length > 10) {
+              extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
+            }
+            
+            imageContents.push({
+              type: "image_url",
+              image_url: {
+                url: `data:${doc.mimeType};base64,${base64Data}`,
+                detail: "high"
+              }
+            });
+          }
+          
+          if (extractedTexts.length > 0) {
+            imageContents.unshift({
+              type: "text",
+              text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}`
+            });
+          }
+          
+          // Add PLUS prompt
+          const lastTextPart = parts.findLast((p: any) => p.text);
+          if (lastTextPart && lastTextPart.text) {
+            imageContents.push({
+              type: "text",
+              text: lastTextPart.text
+            });
+          }
+          
+          // ONLY GPT-5.1 - NO GPT-4o fallback (no compromise)
+          console.log('🤖 PLUS: Trying GPT-5.1 (ONLY fallback, NO GPT-4o)...');
+          const response = await openai.chat.completions.create({
+            model: 'gpt-5.1', // ONLY GPT-5.1 - no compromise
+            messages: [
+              { role: "system", content: SYSTEM_INSTRUCTION },
+              { role: "user", content: imageContents }
+            ],
+            max_tokens: 4096,
+            temperature: 0.1,
+            response_format: { type: "json_object" }
+          });
+          
+          const text = response.choices[0]?.message?.content;
+          if (!text) {
+            throw new Error('Empty response from GPT-5.1');
+          }
+          
+          const rawResult = JSON.parse(text);
+          const finalResult = {
+            modelUsed: 'gpt-5.1',
+            riskScore: rawResult.riskScore ?? 50,
+            riskLevel: rawResult.riskLevel || 'Medium Risk',
+            documentType: rawResult.documentType || 'দলিল',
+            documentTypes: rawResult.documentTypes || [],
+            isSameProperty: rawResult.isSameProperty ?? true,
+            propertyMatchReason: rawResult.propertyMatchReason || '',
+            summary: {
+              mouza: rawResult.summary?.mouza || '',
+              jla: rawResult.summary?.jla || '',
+              thana: rawResult.summary?.thana || '',
+              district: rawResult.summary?.district || '',
+              deedNo: rawResult.summary?.deedNo || '',
+              date: rawResult.summary?.date || '',
+              registrationOffice: rawResult.summary?.registrationOffice || '',
+              propertyAmount: rawResult.summary?.propertyAmount || '',
+              sellerName: rawResult.summary?.sellerName || '',
+              sellerFather: rawResult.summary?.sellerFather || '',
+              buyerName: rawResult.summary?.buyerName || '',
+              buyerFather: rawResult.summary?.buyerFather || '',
+              dagNo: rawResult.summary?.dagNo || '',
+              khatianNo: rawResult.summary?.khatianNo || '',
+              landAmount: rawResult.summary?.landAmount || '',
+              landType: rawResult.summary?.landType || '',
+              boundaries: rawResult.summary?.boundaries || null,
+            },
+            goodPoints: rawResult.goodPoints || [],
+            badPoints: rawResult.badPoints || [],
+            criticalIssues: rawResult.criticalIssues || [],
+            missingInfo: rawResult.missingInfo || [],
+            chainOfTitleAnalysis: rawResult.chainOfTitleAnalysis || '',
+            chainOfTitleTimeline: rawResult.chainOfTitleTimeline || [],
+            buyerProtection: {
+              verdict: rawResult.buyerProtection?.verdict || 'Neutral',
+              score: rawResult.buyerProtection?.score,
+              details: rawResult.buyerProtection?.details || '',
+            },
+            nextSteps: rawResult.nextSteps || [],
+            verificationChecklist: rawResult.verificationChecklist || [],
+          };
+          
+          console.log('✅ PLUS Analysis completed with GPT-5.1 (fallback)');
+          return res.json(finalResult);
+        } catch (gptError: any) {
+          console.error('❌ GPT-5.1 failed:', gptError.message);
+          // NO fallback to GPT-4o - fail with clear error
+          return res.status(500).json({ 
+            error: `GPT-5.1 not available: ${gptError.message}. Please ensure your OpenAI account has access to GPT-5.1. No fallback to older models.` 
+          });
         }
-        
-        if (!result) {
-          throw lastError || new Error('Both Gemini 2.0 Pro Exp and GPT-5.1 failed');
-        }
+      } else {
+        // No OpenAI key - fail
+        return res.status(500).json({ 
+          error: 'Gemini 2.0 Pro Exp failed and no OpenAI API key configured for GPT-5.1 fallback.' 
+        });
+      }
+    }
 
         const text = result.text || '';
         if (!text) {
@@ -330,7 +370,7 @@ JSON ফরম্যাটে উত্তর দিন:
         }
 
         const finalResult = {
-          modelUsed: usedModel || 'gemini-1.5-pro', // Pro model only
+          modelUsed: 'gemini-2.0-pro-exp', // ONLY latest Gemini 2.0 Pro
             riskScore: rawResult.riskScore ?? 50,
             riskLevel: rawResult.riskLevel || 'Medium Risk',
             documentType: rawResult.documentType || 'দলিল',

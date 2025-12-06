@@ -222,12 +222,11 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
 }`
     });
 
-    // Use BEST available Gemini model for Bengali
-    // Priority: Latest models first (best Bengali support)
+    // PRO: Use ONLY latest Gemini Pro models (NO Flash, NO older models)
+    // Best for Bengali: Gemini 2.0 Pro > 1.5 Pro
     const modelPriority = [
-      'gemini-2.0-flash-exp',  // Latest - BEST for Bengali
-      'gemini-1.5-pro',         // Excellent Bengali support
-      'gemini-1.5-flash',       // Fast, good Bengali support
+      'gemini-2.0-pro-exp',      // Latest, BEST for Bengali
+      'gemini-1.5-pro',          // Excellent Bengali support
     ];
     
     let result: any = null;
@@ -237,7 +236,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
     for (const model of modelPriority) {
       try {
         modelName = model;
-        console.log(`🤖 Trying ${modelName}...`);
+        console.log(`🤖 PRO: Trying ${modelName} (Pro model only, NO Flash)...`);
         
         result = await ai.models.generateContent({
           model: modelName,
@@ -252,10 +251,11 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
               },
             }),
             responseMimeType: 'application/json',
+            temperature: 0.1, // Low temperature for accuracy
           },
         });
         
-        console.log(`✅ ${modelName} responded successfully`);
+        console.log(`✅ ${modelName} responded successfully (Pro model)`);
         break; // Success, exit loop
       } catch (error: any) {
         lastError = error;
@@ -292,7 +292,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       // Build result with defaults (same structure as GPT-4o)
       const finalResult = {
         proAnalysis: true,
-        modelUsed: 'gemini-3-pro',
+        modelUsed: modelName || 'gemini-1.5-pro', // Pro model only
         
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',

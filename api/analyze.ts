@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { rateLimit, getClientId } from './rate-limit.js';
 
 // PLUS Analysis - For CLEAR documents with readable text
-// Uses Gemini 1.5 Flash (fast, excellent for Bengali) + PDF text extraction
+// Uses ONLY Gemini Pro models (NO Flash, NO older models) + PDF text extraction
 // NO Vision OCR (not needed for clear documents)
 
 const SYSTEM_INSTRUCTION = `আপনি একজন অভিজ্ঞ বাংলাদেশী সম্পত্তি আইনজীবী। আপনার ক্লায়েন্ট বড় অঙ্কের টাকা দিয়ে জমি কিনতে যাচ্ছেন। আপনার বিশ্লেষণ তাদের সঠিক সিদ্ধান্ত নিতে সাহায্য করবে।
@@ -160,15 +160,19 @@ JSON ফরম্যাটে উত্তর দিন:
 }`
         });
 
-        // Use best available Gemini model for Bengali
-        // Try 2.0 first (best Bengali support), fallback to 1.5
-        const modelPriority = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+        // Use ONLY latest Gemini Pro models (NO Flash, NO older models)
+        // Best for Bengali: Gemini 2.0 Pro > 1.5 Pro
+        const modelPriority = [
+          'gemini-2.0-pro-exp',      // Latest, BEST for Bengali
+          'gemini-1.5-pro',          // Excellent Bengali support
+        ];
         let result: any = null;
         let lastError: any = null;
+        let usedModel = '';
         
         for (const modelName of modelPriority) {
           try {
-            console.log(`🤖 Trying ${modelName} for PLUS...`);
+            console.log(`🤖 Trying ${modelName} for PLUS (Pro model only, NO Flash)...`);
             result = await ai.models.generateContent({
               model: modelName,
               contents: { parts },
@@ -178,18 +182,34 @@ JSON ফরম্যাটে উত্তর দিন:
                 temperature: 0.1, // Low temperature for accuracy
               },
             });
+            usedModel = modelName;
+            console.log(`✅ ${modelName} responded successfully`);
+            break;
+          } catch (error: any) {
+            lastError = error;
+            console.warn(`⚠️ ${modelName} failed:`, error.message);
+            continue;
+          }
+        }
+        
+        if (!result) {
+          throw lastError || new Error('All Gemini Pro models failed');
+        }
 
         const text = result.text || '';
-        if (text) {
-          let rawResult;
-          try {
-            rawResult = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
-          } catch (e) {
-            throw new Error('Invalid JSON from Gemini');
-          }
+        if (!text) {
+          throw new Error('Empty response from Gemini');
+        }
+        
+        let rawResult;
+        try {
+          rawResult = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+        } catch (e) {
+          throw new Error('Invalid JSON from Gemini');
+        }
 
-          const finalResult = {
-            modelUsed: 'gemini-1.5-flash',
+        const finalResult = {
+          modelUsed: usedModel || 'gemini-1.5-pro', // Pro model only
             riskScore: rawResult.riskScore ?? 50,
             riskLevel: rawResult.riskLevel || 'Medium Risk',
             documentType: rawResult.documentType || 'দলিল',

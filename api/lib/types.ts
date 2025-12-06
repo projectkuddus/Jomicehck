@@ -12,6 +12,9 @@ export interface AnalysisResult {
   // PRO flag
   proAnalysis?: boolean;
   
+  // Model info
+  modelUsed?: string;
+  
   // Core scores
   riskScore: number;
   riskLevel: 'Safe' | 'Low Risk' | 'Medium Risk' | 'High Risk' | 'Critical';

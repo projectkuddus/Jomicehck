@@ -3,7 +3,7 @@ import { DocumentInput } from './lib/types.js';
 
 /**
  * Google Cloud Vision OCR - BEST for old/faded/handwritten documents
- * This extracts text from ANY image quality, even when PDF rendering fails
+ * Uses multiple detection methods for maximum accuracy
  */
 
 export async function extractTextWithVisionOCR(
@@ -17,9 +17,39 @@ export async function extractTextWithVisionOCR(
   }
 
   try {
-    // Clean base64 data
     const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
 
+    // Try DOCUMENT_TEXT_DETECTION first (best for structured documents)
+    let text = await callVisionAPI(base64Data, apiKey, 'DOCUMENT_TEXT_DETECTION');
+    
+    // If no text found, try TEXT_DETECTION (works better for handwritten/faded)
+    if (!text || text.length < 20) {
+      console.log('🔄 DOCUMENT_TEXT_DETECTION returned little text, trying TEXT_DETECTION...');
+      const textDetectionResult = await callVisionAPI(base64Data, apiKey, 'TEXT_DETECTION');
+      if (textDetectionResult && textDetectionResult.length > (text?.length || 0)) {
+        text = textDetectionResult;
+      }
+    }
+    
+    if (text && text.length > 0) {
+      console.log(`✅ Vision OCR extracted ${text.length} chars`);
+      return text;
+    }
+    
+    console.warn('⚠️ Vision OCR: No text found in image');
+    return '';
+  } catch (error: any) {
+    console.error('❌ Vision OCR error:', error.message);
+    return '';
+  }
+}
+
+async function callVisionAPI(
+  base64Data: string,
+  apiKey: string,
+  featureType: 'DOCUMENT_TEXT_DETECTION' | 'TEXT_DETECTION'
+): Promise<string> {
+  try {
     const response = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
@@ -35,12 +65,12 @@ export async function extractTextWithVisionOCR(
               },
               features: [
                 {
-                  type: 'DOCUMENT_TEXT_DETECTION', // Best for documents
-                  maxResults: 1,
+                  type: featureType,
+                  maxResults: 50, // Get more results for better accuracy
                 },
               ],
               imageContext: {
-                languageHints: ['bn'], // Bengali ONLY - best accuracy for Bengali documents
+                languageHints: ['bn', 'en'], // Bengali + English (many docs have both)
               },
             },
           ],
@@ -50,24 +80,27 @@ export async function extractTextWithVisionOCR(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Vision API error:', error);
+      console.error(`Vision API ${featureType} error:`, error);
       return '';
     }
 
     const result = await response.json();
-    const textAnnotations = result.responses?.[0]?.textAnnotations;
-
-    if (!textAnnotations || textAnnotations.length === 0) {
-      return '';
-    }
-
-    // First annotation is the full text
-    const fullText = textAnnotations[0].description || '';
-    console.log(`📝 Vision OCR extracted ${fullText.length} characters`);
     
-    return fullText;
+    // For DOCUMENT_TEXT_DETECTION, use fullTextAnnotation
+    if (featureType === 'DOCUMENT_TEXT_DETECTION') {
+      const fullText = result.responses?.[0]?.fullTextAnnotation?.text;
+      if (fullText) return fullText;
+    }
+    
+    // For TEXT_DETECTION or fallback, use textAnnotations
+    const textAnnotations = result.responses?.[0]?.textAnnotations;
+    if (textAnnotations && textAnnotations.length > 0) {
+      return textAnnotations[0].description || '';
+    }
+    
+    return '';
   } catch (error: any) {
-    console.error('Vision OCR error:', error.message);
+    console.error(`Vision API ${featureType} call failed:`, error.message);
     return '';
   }
 }
@@ -90,4 +123,3 @@ export async function extractTextFromDocuments(
   
   return results;
 }
-

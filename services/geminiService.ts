@@ -166,6 +166,8 @@ const mergeAnalysisResults = (results: AnalysisResult[]): AnalysisResult => {
     ...baseResult,
     // Preserve PRO flag
     proAnalysis: isPro,
+    // Preserve model used
+    modelUsed: results.find(r => r.modelUsed)?.modelUsed,
     riskScore: avgRiskScore,
     riskLevel: maxRiskLevel,
     // Smart document type labeling

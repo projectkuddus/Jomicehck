@@ -70,21 +70,18 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
         </button>
       </div>
       
-      {/* Print Header - Only visible when printing */}
-      <div className="hidden print:block mb-6 pb-4 border-b-2 border-green-600">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-            <Check size={24} className="text-white" />
+      {/* Print Header - Only visible when printing - Compact inline */}
+      <div className="hidden print:flex print:items-center print:justify-between print:mb-2 print:pb-2 print:border-b print:border-green-600">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-green-600 rounded flex items-center justify-center">
+            <Check size={14} className="text-white" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">JomiCheck Report</h2>
-            <p className="text-sm text-slate-600">জমি চেক রিপোর্ট</p>
-          </div>
+          <span className="text-sm font-bold text-slate-900">JomiCheck Report</span>
+          <span className="text-xs text-slate-500">• জমি চেক রিপোর্ট</span>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
-          Generated: {new Date().toLocaleDateString('en-BD', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          {' '} • www.jomicheck.com
-        </p>
+        <span className="text-xs text-slate-400">
+          {new Date().toLocaleDateString('en-BD')} • www.jomicheck.com
+        </span>
       </div>
 
       <div className="pb-10">

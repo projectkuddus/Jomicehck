@@ -357,10 +357,20 @@
         }
         
         .print\\:block { display: block !important; }
+        .print\\:flex { display: flex !important; }
         .print-report ~ div, [class*="flex-shrink-0"] { display: none !important; }
         
-        /* Page breaks */
-        .print-report > div { page-break-inside: avoid; break-inside: avoid; }
+        /* No page break after header */
+        .print-report > div:first-child { 
+          page-break-after: avoid !important; 
+          break-after: avoid !important;
+        }
+        
+        /* Page breaks only for large sections */
+        .print-report .rounded-xl { 
+          page-break-inside: avoid; 
+          break-inside: avoid; 
+        }
       }
     </style>
     

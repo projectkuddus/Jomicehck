@@ -260,42 +260,20 @@ Instructions:
 Return ONLY valid JSON. Write everything in Bengali.`
     });
 
-    // Try models in order of preference
-    const proModels = [
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-pro',
-      'gemini-1.5-pro-002',
-      'gemini-2.5-pro-preview-06-05',
-    ];
+    // Use gemini-1.5-flash for PRO - it has 1M context and follows complex prompts well
+    // The PRO value comes from: detailed prompt + rich output format + premium UI
+    console.log('🤖 Calling Gemini 1.5 Flash for PRO deep analysis...');
     
-    let response: any = null;
-    let usedModel = '';
-    
-    for (const modelName of proModels) {
-      try {
-        console.log(`🤖 Trying ${modelName} for PRO analysis...`);
-        response = await ai.models.generateContent({
-          model: modelName,
-          contents: { parts },
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: "application/json",
-          }
-        });
-        usedModel = modelName;
-        console.log(`✅ ${modelName} response received`);
-        break; // Success, exit loop
-      } catch (modelError: any) {
-        console.warn(`⚠️ ${modelName} failed:`, modelError.message?.substring(0, 100));
-        // Continue to next model
+    const response = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: { parts },
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
       }
-    }
+    });
     
-    if (!response) {
-      throw new Error('All PRO models failed. Please check your API key has access to Gemini Pro models.');
-    }
-    
-    console.log(`✅ PRO Analysis completed using ${usedModel}`);
+    console.log('✅ PRO Analysis response received');
     
     let text: string;
     if (response && typeof response === 'object' && 'text' in response) {

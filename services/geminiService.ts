@@ -10,11 +10,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 let analysisContext: AnalysisResult | null = null;
 let chatHistory: Array<{ role: 'user' | 'model'; text: string }> = [];
 
-// Vercel Hobby plan has 4.5MB body limit
+// Vercel Pro plan has higher limits but we still batch for reliability
 // Average document image is ~300-500KB in base64
-// Batch size of 5-7 should stay under limit for most files
-const MAX_BATCH_SIZE = 7;
-const MAX_PAYLOAD_SIZE = 4 * 1024 * 1024; // 4MB to stay safely under 4.5MB limit
+const MAX_BATCH_SIZE = 5; // Smaller batches = more reliable
+const MAX_PAYLOAD_SIZE = 3 * 1024 * 1024; // 3MB conservative limit
+const MAX_SINGLE_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB per file max
 
 /**
  * Analyze a single batch of documents
@@ -39,7 +39,10 @@ const analyzeBatch = async (documents: Array<{ name: string; mimeType: string; d
 
   if (!response.ok) {
     if (response.status === 413) {
-      throw new Error("Files too large. Please try with fewer or smaller files.");
+      throw new Error("File too large for analysis. Please upload a smaller PDF (under 5MB) or take photos of individual pages and upload as images.");
+    }
+    if (response.status === 504 || response.status === 502) {
+      throw new Error("Analysis timed out. Please try with fewer pages or wait a moment and try again.");
     }
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(errorData.error || `Server error: ${response.status}`);
@@ -163,13 +166,34 @@ export const analyzeDocuments = async (
       throw new Error("No valid documents provided");
     }
 
+    // Check for oversized files and warn user
+    const oversizedFiles = allDocuments.filter(doc => doc.data.length > MAX_SINGLE_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      console.warn(`⚠️ ${oversizedFiles.length} files exceed size limit:`, oversizedFiles.map(f => f.name));
+      // For PDFs, we still try to process them but one at a time
+    }
+
     // Smart batching: group files by size to maximize throughput while staying under limit
     const batches: Array<{ name: string; mimeType: string; data: string }[]> = [];
     let currentBatch: Array<{ name: string; mimeType: string; data: string }> = [];
     let currentBatchSize = 0;
 
     for (const doc of allDocuments) {
-      const docSize = doc.data.length; // Base64 string length ≈ bytes
+      const docSize = doc.data.length;
+      
+      // If single file is too large, put it in its own batch
+      if (docSize > MAX_SINGLE_FILE_SIZE) {
+        // Push current batch first if not empty
+        if (currentBatch.length > 0) {
+          batches.push(currentBatch);
+          currentBatch = [];
+          currentBatchSize = 0;
+        }
+        // Put oversized file in its own batch (we'll try anyway)
+        batches.push([doc]);
+        console.log(`📦 Large file "${doc.name}" (${(docSize / 1024 / 1024).toFixed(1)}MB) in separate batch`);
+        continue;
+      }
       
       // If adding this doc would exceed limit OR batch is full, start new batch
       if (currentBatchSize + docSize > MAX_PAYLOAD_SIZE || currentBatch.length >= MAX_BATCH_SIZE) {
@@ -188,6 +212,8 @@ export const analyzeDocuments = async (
     if (currentBatch.length > 0) {
       batches.push(currentBatch);
     }
+    
+    console.log(`📊 Created ${batches.length} batches from ${allDocuments.length} documents`);
 
     const results: AnalysisResult[] = [];
     const totalBatches = batches.length;

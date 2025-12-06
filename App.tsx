@@ -19,9 +19,9 @@ import AuthDebug from './components/AuthDebug';
 import BlogList from './components/BlogList';
 import BlogArticle from './components/BlogArticle';
 import LiveChat from './components/LiveChat';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth, ANALYSIS_TIERS } from './contexts/AuthContext';
 
-import { analyzeDocuments } from './services/geminiService';
+import { analyzeDocuments, AnalysisTier } from './services/geminiService';
 import { FileWithPreview, AnalysisState, HistoryItem } from './types';
 import { 
   ArrowRight, 
@@ -51,6 +51,7 @@ const AppContent: React.FC = () => {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>('report');
   const [blogSlug, setBlogSlug] = useState<string>('');
+  const [selectedTier, setSelectedTier] = useState<AnalysisTier>('plus');
   
   // History State
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -197,56 +198,90 @@ const AppContent: React.FC = () => {
   };
 
   // Credit System Constants
-  const FREE_CREDITS = 5; // Free trial pages for non-logged in users
-  const CREDIT_RATE = 8; // BDT per credit (based on Popular package rate)
+  const FREE_CREDITS = 5;
+  const CREDIT_RATE = 9; // BDT per credit (based on Popular package rate)
 
-  // Dynamic Credit-Based Pricing
+  // Calculate credits needed for a specific tier
+  const getCreditsForTier = (pages: number, tier: AnalysisTier) => {
+    const multiplier = tier === 'pro' ? ANALYSIS_TIERS.PRO.creditsPerPage : ANALYSIS_TIERS.PLUS.creditsPerPage;
+    return pages * multiplier;
+  };
+
+  // Dynamic Credit-Based Pricing with Tier Support
   const priceCalculation = useMemo(() => {
-    if (files.length === 0) return { total: 0, pages: 0, creditsNeeded: 0, userCredits: 0, canAfford: false, needsLogin: false, isLoading: false };
+    if (files.length === 0) {
+      return { 
+        total: 0, pages: 0, 
+        plusCredits: 0, proCredits: 0,
+        creditsNeeded: 0, userCredits: 0, 
+        canAffordPlus: false, canAffordPro: false,
+        canAfford: false, needsLogin: false, isLoading: false 
+      };
+    }
     
-    // Calculate total "pages" (Images = 1, PDF = actual page count)
+    // Calculate total pages
     const totalPages = files.reduce((acc, file) => acc + file.estimatedPages, 0);
     
-    // CRITICAL FIX: If user exists but profile is loading, wait (don't show needsLogin)
+    // Calculate credits for each tier
+    const plusCredits = getCreditsForTier(totalPages, 'plus');
+    const proCredits = getCreditsForTier(totalPages, 'pro');
+    const creditsNeeded = selectedTier === 'pro' ? proCredits : plusCredits;
+    
+    // If profile is loading
     if (user && !profile && authLoading) {
       return {
-        total: totalPages * CREDIT_RATE,
+        total: creditsNeeded * CREDIT_RATE,
         pages: totalPages,
-        creditsNeeded: totalPages,
+        plusCredits,
+        proCredits,
+        creditsNeeded,
         userCredits: 0,
+        canAffordPlus: false,
+        canAffordPro: false,
         canAfford: false,
-        needsLogin: false, // Don't prompt login if profile is loading
-        isLoading: true // Profile is loading
+        needsLogin: false,
+        isLoading: true
       };
     }
     
     const userCredits = profile?.credits || 0;
     
-    // If user is logged in and profile is loaded, check their credits
+    // If user is logged in
     if (user && profile) {
-      const canAfford = userCredits >= totalPages;
+      const canAffordPlus = userCredits >= plusCredits;
+      const canAffordPro = userCredits >= proCredits;
+      const canAfford = selectedTier === 'pro' ? canAffordPro : canAffordPlus;
+      
       return { 
-        total: totalPages * CREDIT_RATE, 
-        pages: totalPages, 
-        creditsNeeded: totalPages,
+        total: creditsNeeded * CREDIT_RATE, 
+        pages: totalPages,
+        plusCredits,
+        proCredits,
+        creditsNeeded,
         userCredits,
+        canAffordPlus,
+        canAffordPro,
         canAfford,
         needsLogin: false,
         isLoading: false
       };
     }
     
-    // Not logged in - prompt to login for free credits
+    // Not logged in
     return { 
-      total: totalPages * CREDIT_RATE, 
-      pages: totalPages, 
-      creditsNeeded: totalPages,
+      total: creditsNeeded * CREDIT_RATE, 
+      pages: totalPages,
+      plusCredits,
+      proCredits,
+      creditsNeeded,
       userCredits: 0,
+      canAffordPlus: false,
+      canAffordPro: false,
       canAfford: false,
       needsLogin: true,
       isLoading: false
     };
-  }, [files, user, profile, authLoading]);
+  }, [files, user, profile, authLoading, selectedTier]);
 
   const handleStartAnalysis = async () => {
     console.log('🔍 Analyze button clicked:', {
@@ -389,8 +424,8 @@ const AppContent: React.FC = () => {
     setActiveTab('report'); 
 
     try {
-      console.log('📤 Calling analyzeDocuments API...');
-      const resultData = await analyzeDocuments(files, (current, total, currentBatch, totalBatches) => {
+      console.log(`📤 Calling analyzeDocuments API (${selectedTier.toUpperCase()})...`);
+      const resultData = await analyzeDocuments(files, selectedTier, (current, total, currentBatch, totalBatches) => {
         // Update progress in real-time
         console.log('📊 Analysis progress:', { current, total, currentBatch, totalBatches });
         setAnalysis(prev => ({
@@ -577,55 +612,93 @@ const AppContent: React.FC = () => {
                             <div className="text-xs text-slate-500 mt-1">{priceCalculation.pages} pages to analyze</div>
                           </div>
                        </div>
-                       <div className="text-[11px] text-slate-500 border-t border-slate-200 pt-3 leading-relaxed">
-                         Includes: Deep Forensic Scan • Chain of Title • Vested Property Check • AI Chat
-                       </div>
-                       {!user && (
-                         <div className="mt-3 text-xs text-brand-600 bg-brand-50 rounded-lg p-2 border border-brand-100">
-                           🎁 Sign up with your phone and get {FREE_CREDITS} free credits instantly!
-                         </div>
-                       )}
-                       {user && !priceCalculation.canAfford && (
-                         <div className="mt-3 text-xs text-amber-600 bg-amber-50 rounded-lg p-2 border border-amber-100">
-                           💡 You need {priceCalculation.creditsNeeded - priceCalculation.userCredits} more credits. Buy a package to continue.
+                         {!user && (
+                         <div className="text-xs text-brand-600 bg-brand-50 rounded-lg p-2 border border-brand-100">
+                           🎁 Sign up and get {FREE_CREDITS} free credits!
                          </div>
                        )}
                     </div>
 
-                    {/* Main Action Button */}
-                    <button
-                      onClick={handleStartAnalysis}
-                      disabled={analysis.isLoading || priceCalculation.isLoading}
-                      className={`
-                        w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg transition-all
-                        ${analysis.isLoading || priceCalculation.isLoading
-                          ? 'bg-slate-400 cursor-not-allowed' 
-                          : priceCalculation.needsLogin
-                            ? 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/20'
-                            : priceCalculation.canAfford
-                              ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20 hover:shadow-green-600/30 hover:-translate-y-0.5 active:translate-y-0'
-                              : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                        }
-                      `}
-                    >
-                      {analysis.isLoading ? (
-                        <span className="flex items-center gap-2">Processing...</span>
-                      ) : priceCalculation.isLoading ? (
-                        <span className="flex items-center gap-2">Loading profile...</span>
-                      ) : priceCalculation.needsLogin ? (
-                        <>
-                          <LogIn size={20} /> Login to Analyze
-                        </>
-                      ) : priceCalculation.canAfford ? (
-                        <>
-                          Use {priceCalculation.creditsNeeded} Credits & Analyze <ArrowRight size={20} />
-                        </>
-                      ) : (
-                        <>
-                          Buy Credits to Continue <ArrowRight size={20} />
-                        </>
-                      )}
-                    </button>
+                    {/* Analysis Tier Selection - PLUS vs PRO */}
+                    {priceCalculation.needsLogin ? (
+                      <button
+                        onClick={() => setIsAuthOpen(true)}
+                        className="w-full py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg bg-brand-600 hover:bg-brand-700 transition-all"
+                      >
+                        <LogIn size={20} /> Login to Analyze
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* PLUS Button */}
+                        <button
+                          onClick={() => { setSelectedTier('plus'); handleStartAnalysis(); }}
+                          disabled={analysis.isLoading || priceCalculation.isLoading || !priceCalculation.canAffordPlus}
+                          className={`
+                            w-full py-3 px-4 rounded-xl flex items-center justify-between text-white font-bold shadow-md transition-all
+                            ${analysis.isLoading || priceCalculation.isLoading
+                              ? 'bg-slate-400 cursor-not-allowed'
+                              : priceCalculation.canAffordPlus
+                                ? 'bg-green-600 hover:bg-green-700 hover:-translate-y-0.5'
+                                : 'bg-slate-300 cursor-not-allowed'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Zap size={18} />
+                            <span>PLUS Analysis</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="bg-white/20 px-2 py-0.5 rounded">{priceCalculation.plusCredits} credits</span>
+                            <ArrowRight size={18} />
+                          </div>
+                        </button>
+                        
+                        {/* PRO Button */}
+                        <button
+                          onClick={() => { setSelectedTier('pro'); handleStartAnalysis(); }}
+                          disabled={analysis.isLoading || priceCalculation.isLoading || !priceCalculation.canAffordPro}
+                          className={`
+                            w-full py-3 px-4 rounded-xl flex items-center justify-between text-white font-bold shadow-md transition-all
+                            ${analysis.isLoading || priceCalculation.isLoading
+                              ? 'bg-slate-400 cursor-not-allowed'
+                              : priceCalculation.canAffordPro
+                                ? 'bg-purple-600 hover:bg-purple-700 hover:-translate-y-0.5'
+                                : 'bg-slate-300 cursor-not-allowed'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sparkles size={18} />
+                            <span>PRO Analysis</span>
+                            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-normal">Deep</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="bg-white/20 px-2 py-0.5 rounded">{priceCalculation.proCredits} credits</span>
+                            <ArrowRight size={18} />
+                          </div>
+                        </button>
+                        
+                        {/* Tier Comparison */}
+                        <div className="text-[10px] text-slate-500 grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                          <div>
+                            <span className="font-semibold text-green-600">PLUS:</span> AI Scan, Risk Score, Report
+                          </div>
+                          <div>
+                            <span className="font-semibold text-purple-600">PRO:</span> + Old Docs, Legal Refs, Deep Analysis
+                          </div>
+                        </div>
+                        
+                        {/* Not enough credits */}
+                        {!priceCalculation.canAffordPlus && (
+                          <button
+                            onClick={() => setIsPaymentOpen(true)}
+                            className="w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold bg-amber-600 hover:bg-amber-700 transition-all"
+                          >
+                            Buy Credits ({priceCalculation.plusCredits - priceCalculation.userCredits} more needed)
+                          </button>
+                        )}
+                      </div>
+                    )}
                     
                     {analysis.error && (
                       <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-sm flex items-start gap-2">

@@ -146,14 +146,13 @@ JSON ফরম্যাটে উত্তর দিন:
     
     try {
       console.log('🤖 PLUS: Trying Gemini 2.0 Pro Exp...');
-      const model = ai.getGenerativeModel({ 
-        model: 'gemini-2.0-pro-exp',
-        systemInstruction: SYSTEM_INSTRUCTION,
-      });
       
-      result = await model.generateContent({
-        contents: [{ parts }],
-        generationConfig: {
+      // Use ai.models.generateContent (correct API for @google/genai)
+      result = await ai.models.generateContent({
+        model: 'gemini-2.0-pro-exp',
+        contents: { parts },
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: 'application/json',
           temperature: 0.1,
         },
@@ -192,7 +191,7 @@ JSON ফরম্যাটে উত্তর দিন:
       }
       
       const response = await openai.chat.completions.create({
-        model: 'gpt-5.1',
+        model: 'gpt-4o',
         messages: [
           { role: "system", content: SYSTEM_INSTRUCTION },
           { role: "user", content: imageContents }
@@ -207,7 +206,7 @@ JSON ফরম্যাটে উত্তর দিন:
       
       const rawResult = JSON.parse(text);
       return res.json({
-        modelUsed: 'gpt-5.1',
+        modelUsed: 'gpt-4o',
         riskScore: rawResult.riskScore ?? 50,
         riskLevel: rawResult.riskLevel || 'Medium Risk',
         documentType: rawResult.documentType || 'দলিল',
@@ -227,7 +226,7 @@ JSON ফরম্যাটে উত্তর দিন:
     }
 
     // Process Gemini result
-    const text = result.response?.text() || result.text || '';
+    const text = result.text || '';
     if (!text) throw new Error('Empty response from Gemini');
     
     let rawResult;

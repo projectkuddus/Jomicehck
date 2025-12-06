@@ -260,20 +260,42 @@ Instructions:
 Return ONLY valid JSON. Write everything in Bengali.`
     });
 
-    console.log('🤖 Calling Gemini 1.5 Flash for PRO deep analysis...');
+    // Try models in order of preference
+    const proModels = [
+      'gemini-1.5-pro-latest',
+      'gemini-1.5-pro',
+      'gemini-1.5-pro-002',
+      'gemini-2.5-pro-preview-06-05',
+    ];
     
-    // Note: Using gemini-1.5-flash as gemini-1.5-pro requires paid API access
-    // gemini-1.5-flash still provides excellent detailed analysis with 1M token context
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: { parts },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
+    let response: any = null;
+    let usedModel = '';
+    
+    for (const modelName of proModels) {
+      try {
+        console.log(`🤖 Trying ${modelName} for PRO analysis...`);
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: { parts },
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: "application/json",
+          }
+        });
+        usedModel = modelName;
+        console.log(`✅ ${modelName} response received`);
+        break; // Success, exit loop
+      } catch (modelError: any) {
+        console.warn(`⚠️ ${modelName} failed:`, modelError.message?.substring(0, 100));
+        // Continue to next model
       }
-    });
-
-    console.log('✅ Gemini 1.5 Flash PRO response received');
+    }
+    
+    if (!response) {
+      throw new Error('All PRO models failed. Please check your API key has access to Gemini Pro models.');
+    }
+    
+    console.log(`✅ PRO Analysis completed using ${usedModel}`);
     
     let text: string;
     if (response && typeof response === 'object' && 'text' in response) {

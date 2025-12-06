@@ -381,73 +381,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Apply referral code - FIXED: Use database-first approach and proper tracking
+  // Apply referral code - Uses server-side API to bypass RLS
   const applyReferralCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!user || !profile) return { success: false, error: 'Not logged in' };
     
-    // Re-fetch profile to check current state
-    const { data: currentProfile, error: fetchError } = await supabase
-      .from('profiles')
-      .select('referred_by, credits')
-      .eq('id', user.id)
-      .single();
-    
-    if (fetchError || !currentProfile) {
-      return { success: false, error: 'Failed to verify account status' };
-    }
-    
-    if (currentProfile.referred_by) {
+    // Check if already used a referral code
+    if (profile.referred_by) {
       return { success: false, error: 'Already used a referral code' };
     }
 
     try {
-      // Find referrer by code
-      const { data: referrer, error: findError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('referral_code', code.toUpperCase().trim())
-        .single();
+      // Use server-side API to handle referral (bypasses RLS)
+      const response = await fetch('/api/apply-referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          referralCode: code.trim(),
+        }),
+      });
 
-      if (findError || !referrer) {
-        return { success: false, error: 'Invalid referral code' };
-      }
-      
-      if (referrer.id === user.id) {
-        return { success: false, error: 'Cannot use your own code' };
-      }
+      const result = await response.json();
 
-      // CRITICAL: Use database values, not local state
-      const userCurrentCredits = currentProfile.credits || 0;
-      const referrerCurrentCredits = referrer.credits || 0;
-      const referrerCurrentTotal = referrer.total_referrals || 0;
-
-      // Update user (new user gets bonus)
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          referred_by: referrer.id,
-          credits: userCurrentCredits + REFERRAL_BONUS_CREDITS,
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('❌ Failed to apply referral code to user:', updateError);
-        return { success: false, error: 'Failed to apply code' };
-      }
-
-      // Update referrer (referrer gets bonus and count increases)
-      const { error: referrerUpdateError } = await supabase
-        .from('profiles')
-        .update({
-          credits: referrerCurrentCredits + REFERRAL_BONUS_CREDITS,
-          total_referrals: referrerCurrentTotal + 1,
-        })
-        .eq('id', referrer.id);
-
-      if (referrerUpdateError) {
-        console.error('❌ Failed to update referrer:', referrerUpdateError);
-        // User was already updated, so we should still return success
-        // But log the error for admin review
+      if (!response.ok) {
+        return { success: false, error: result.error || 'Failed to apply code' };
       }
 
       // Refresh profile to get updated values
@@ -455,9 +412,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('✅ Referral code applied:', {
         code: code.toUpperCase(),
-        userCredits: userCurrentCredits + REFERRAL_BONUS_CREDITS,
-        referrerCredits: referrerCurrentCredits + REFERRAL_BONUS_CREDITS,
-        referrerTotal: referrerCurrentTotal + 1,
+        bonusCredits: result.bonusCredits,
+        newCredits: result.newCredits,
       });
 
       return { success: true };

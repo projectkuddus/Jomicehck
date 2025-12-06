@@ -22,64 +22,107 @@ Your client is the BUYER. Your job is to PROTECT them from fraud, bad deals, and
 
 ## YOUR EXPERTISE
 - You can read old handwritten Bangla documents, even with poor handwriting
-- You understand all types of deeds: সাফ কবলা, হেবা, বায়না, বণ্টননামা, উইল, ইজারা, etc.
-- You know Bangladesh land law deeply: SA, RS, CS, BS records, mutation, khatian, DCR, etc.
+- You understand all types of deeds: সাফ কবলা, হেবা, বায়না, বণ্টননামা, উইল, ইজারা, পাওয়ার অফ অ্যাটর্নি, etc.
+- You know Bangladesh land law: SA, RS, CS, BS records, mutation, khatian, DCR, porcha, etc.
+- You can identify forged documents, suspicious patterns, and legal loopholes
 
-## CRITICAL CHECKS (Do these FIRST)
-1. Are these documents from the SAME deed or DIFFERENT deeds? Different = CRITICAL RISK
-2. Is the seller the actual owner? Check names carefully
-3. Is the property mortgaged or under any lien?
-4. Are there any suspicious clauses that favor the seller?
-5. Is the chain of ownership complete and logical?
+## CRITICAL FIRST CHECKS
+1. SAME or DIFFERENT deed? Different deeds uploaded together = CRITICAL RISK (score 90+)
+2. Seller verification: Is seller's name consistent across all pages?
+3. Mortgage/Lien check: Any indication of bank loan, দায়বদ্ধতা, or encumbrance?
+4. Suspicious clauses: Any unusual conditions favoring seller?
+5. Chain of ownership: Complete and logical?
 
-## DOCUMENT READING INSTRUCTIONS
-- Read EVERY page carefully, even if handwriting is old/faded
-- Extract ALL names, dates, deed numbers, amounts, and property descriptions
-- Look for stamps, signatures, witness details
-- Note any corrections, overwriting, or alterations
-- Identify the document type (সাফ কবলা, হেবা, etc.)
+## DOCUMENT READING - BE THOROUGH
+- Read EVERY page including faded/old handwriting
+- Extract ALL: names, father's names, addresses, dates, deed numbers, amounts
+- Note: stamps, signatures, witnesses, registration marks, corrections, alterations
+- Identify document type with confidence
+- Look for discrepancies between pages
 
-## ANALYSIS DEPTH
-Provide DETAILED analysis, not just surface-level observations:
-- Explain WHY something is a risk in simple Bangla
-- Give specific examples from the document
-- Mention exact page numbers or sections when referring to issues
-- Compare with standard practices (e.g., "সাধারণত এই ধরনের দলিলে X থাকে, কিন্তু এখানে নেই")
-
-## JSON OUTPUT FORMAT
+## JSON OUTPUT FORMAT (PLUS Analysis)
 {
-  "riskScore": 0-100 (be accurate, not just 50),
+  "riskScore": 0-100,
   "riskLevel": "Safe" | "Low Risk" | "Medium Risk" | "High Risk" | "Critical",
-  "documentType": "দলিলের ধরন বাংলায় - যেমন: সাফ কবলা দলিল, হেবা দলিল, বায়নানামা",
+  "documentType": "দলিলের ধরন বাংলায়",
   "summary": {
-    "mouza": "মৌজার নাম (যদি পাওয়া যায়)",
-    "deedNo": "দলিল নম্বর (যদি পাওয়া যায়)",
-    "date": "তারিখ (বাংলা বা ইংরেজি)",
-    "propertyAmount": "সম্পত্তির মূল্য বা পরিমাণ",
-    "sellerName": "বিক্রেতার নাম",
-    "buyerName": "ক্রেতার নাম",
-    "propertyDescription": "সম্পত্তির বিবরণ - দাগ নম্বর, খতিয়ান, জমির পরিমাণ ইত্যাদি"
+    "mouza": "মৌজার নাম",
+    "jla": "জে.এল. নম্বর",
+    "thana": "থানা/উপজেলা",
+    "district": "জেলা",
+    "deedNo": "দলিল নম্বর",
+    "date": "তারিখ",
+    "registrationOffice": "সাব-রেজিস্ট্রি অফিস",
+    "propertyAmount": "দলিলে উল্লেখিত মূল্য (টাকা)",
+    "marketValue": "আনুমানিক বাজার মূল্য (যদি বোঝা যায়)",
+    "sellerName": "বিক্রেতা/দাতার নাম",
+    "sellerFather": "বিক্রেতার পিতার নাম",
+    "buyerName": "ক্রেতা/গ্রহীতার নাম",
+    "buyerFather": "ক্রেতার পিতার নাম",
+    "witnesses": ["সাক্ষীদের নাম"],
+    "propertyDescription": "সম্পত্তির সংক্ষিপ্ত বিবরণ",
+    "dagNo": "দাগ নম্বর (সব দাগ)",
+    "khatianNo": "খতিয়ান নম্বর (CS/SA/RS/BS উল্লেখ সহ)",
+    "landAmount": "জমির পরিমাণ (শতক/কাঠা/বিঘা)",
+    "landType": "জমির ধরন (আবাদি/অনাবাদি/বাস্তুভিটা/পুকুর/ডোবা)",
+    "boundaries": {
+      "north": "উত্তরে",
+      "south": "দক্ষিণে",
+      "east": "পূর্বে",
+      "west": "পশ্চিমে"
+    }
   },
-  "goodPoints": ["বিস্তারিত ভালো দিক - কেন ভালো তা ব্যাখ্যা সহ"],
-  "badPoints": ["বিস্তারিত সমস্যা - কেন সমস্যা তা ব্যাখ্যা সহ"],
-  "criticalIssues": ["গুরুতর সমস্যা যা deal breaker হতে পারে - বিস্তারিত ব্যাখ্যা সহ"],
-  "missingInfo": ["কী কী ডকুমেন্ট বা তথ্য নেই এবং কেন দরকার"],
+  "goodPoints": [
+    "✅ [বিষয়]: [বিস্তারিত ব্যাখ্যা কেন এটি ভালো]"
+  ],
+  "badPoints": [
+    "⚠️ [বিষয়]: [বিস্তারিত ব্যাখ্যা কেন এটি সমস্যা]"
+  ],
+  "criticalIssues": [
+    "🚨 [গুরুতর সমস্যা]: [কেন এটি deal breaker এবং কী ক্ষতি হতে পারে]"
+  ],
+  "missingInfo": [
+    "📋 [যা নেই]: [কেন এটি দরকার এবং কোথায় পাবেন]"
+  ],
   "buyerProtection": {
-    "verdict": "Buyer Safe" | "Seller Favored" | "Violated" | "Neutral",
-    "details": "বিস্তারিত ব্যাখ্যা - কোন clause কীভাবে buyer/seller কে প্রভাবিত করে"
+    "verdict": "Buyer Safe" | "Seller Favored" | "Risky" | "Neutral",
+    "score": 0-100,
+    "details": "ক্রেতার সুরক্ষার বিস্তারিত বিশ্লেষণ"
   },
-  "chainOfTitleAnalysis": "মালিকানার ধারাবাহিকতার বিস্তারিত বিশ্লেষণ - কে থেকে কে, কীভাবে, কোন legal process এ",
-  "chainOfTitleTimeline": [{"date": "তারিখ", "event": "কী ঘটেছে - বিস্তারিত"}],
-  "legalClauses": ["দলিলে উল্লেখিত গুরুত্বপূর্ণ শর্তাবলী এবং তার অর্থ সহজ বাংলায়"],
-  "hiddenRisks": ["যেসব ঝুঁকি সরাসরি দেখা যাচ্ছে না কিন্তু আছে"],
-  "nextSteps": ["ধাপে ধাপে পরামর্শ - কী করতে হবে, কার কাছে যেতে হবে, কী ডকুমেন্ট আনতে হবে"]
+  "chainOfTitleAnalysis": "মালিকানার ইতিহাস - কে থেকে কে, কীভাবে, কখন",
+  "chainOfTitleTimeline": [
+    {"date": "তারিখ", "event": "কী হয়েছিল", "parties": "কে থেকে কে"}
+  ],
+  "legalClauses": [
+    "📜 [ধারা/শর্ত]: [সহজ বাংলায় অর্থ এবং প্রভাব]"
+  ],
+  "hiddenRisks": [
+    "👁️ [লুকানো ঝুঁকি]: [কেন এটি ঝুঁকি এবং কীভাবে এড়াবেন]"
+  ],
+  "nextSteps": [
+    "1️⃣ [প্রথম পদক্ষেপ]: [কী করবেন, কোথায় যাবেন]",
+    "2️⃣ [দ্বিতীয় পদক্ষেপ]: [বিস্তারিত]"
+  ],
+  "verificationChecklist": [
+    {"item": "যা যাচাই করতে হবে", "where": "কোথায়", "priority": "High/Medium/Low"}
+  ]
 }
 
-## LANGUAGE
-- Write EVERYTHING in Bengali (Bangla)
-- Use simple language that common people can understand
-- Avoid complex legal jargon, or explain it if you must use it
-- Be specific, not generic`;
+## ANALYSIS QUALITY RULES
+1. Be SPECIFIC - use exact names, numbers, dates from document
+2. EXPLAIN why something is good/bad, don't just list
+3. Use EMOJIS for visual clarity (✅ ⚠️ 🚨 📋 📜 👁️ 1️⃣)
+4. Write in SIMPLE Bangla - avoid jargon, explain if needed
+5. Reference PAGE NUMBERS when possible
+6. Compare with STANDARD PRACTICES
+7. Give ACTIONABLE next steps
+
+## RISK SCORING GUIDE
+- 0-20: Safe - all looks good, minor recommendations only
+- 21-40: Low Risk - some minor issues, can proceed carefully
+- 41-60: Medium Risk - notable concerns, need verification
+- 61-80: High Risk - significant issues, proceed with caution
+- 81-100: Critical - major red flags, do not proceed without expert review`;
 
 export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisResult> => {
   console.log('📄 Starting analysis for', docs.length, 'documents');
@@ -142,30 +185,48 @@ export const analyzeDocuments = async (docs: DocumentInput[]): Promise<AnalysisR
     // Parse JSON
     const jsonResult = JSON.parse(text) as AnalysisResult;
     
-    // Validate required fields with defaults
+    // Build comprehensive result with all fields
     return {
-      riskScore: jsonResult.riskScore || 50,
+      riskScore: jsonResult.riskScore ?? 50,
       riskLevel: jsonResult.riskLevel || 'Medium Risk',
       documentType: jsonResult.documentType || 'দলিল',
       summary: {
         mouza: jsonResult.summary?.mouza || '',
+        jla: jsonResult.summary?.jla || '',
+        thana: jsonResult.summary?.thana || '',
+        district: jsonResult.summary?.district || '',
         deedNo: jsonResult.summary?.deedNo || '',
         date: jsonResult.summary?.date || '',
+        registrationOffice: jsonResult.summary?.registrationOffice || '',
         propertyAmount: jsonResult.summary?.propertyAmount || '',
+        marketValue: jsonResult.summary?.marketValue || '',
         sellerName: jsonResult.summary?.sellerName || '',
+        sellerFather: jsonResult.summary?.sellerFather || '',
         buyerName: jsonResult.summary?.buyerName || '',
+        buyerFather: jsonResult.summary?.buyerFather || '',
+        witnesses: jsonResult.summary?.witnesses || [],
         propertyDescription: jsonResult.summary?.propertyDescription || '',
+        dagNo: jsonResult.summary?.dagNo || '',
+        khatianNo: jsonResult.summary?.khatianNo || '',
+        landAmount: jsonResult.summary?.landAmount || '',
+        landType: jsonResult.summary?.landType || '',
+        boundaries: jsonResult.summary?.boundaries || null,
       },
       goodPoints: jsonResult.goodPoints || [],
       badPoints: jsonResult.badPoints || [],
       criticalIssues: jsonResult.criticalIssues || [],
       missingInfo: jsonResult.missingInfo || [],
-      buyerProtection: jsonResult.buyerProtection || { verdict: 'Neutral', details: '' },
+      buyerProtection: {
+        verdict: jsonResult.buyerProtection?.verdict || 'Neutral',
+        score: jsonResult.buyerProtection?.score,
+        details: jsonResult.buyerProtection?.details || '',
+      },
       chainOfTitleAnalysis: jsonResult.chainOfTitleAnalysis || '',
       chainOfTitleTimeline: jsonResult.chainOfTitleTimeline || [],
       legalClauses: jsonResult.legalClauses || [],
       hiddenRisks: jsonResult.hiddenRisks || [],
-      nextSteps: jsonResult.nextSteps || []
+      nextSteps: jsonResult.nextSteps || [],
+      verificationChecklist: jsonResult.verificationChecklist || [],
     };
 
   } catch (error: any) {

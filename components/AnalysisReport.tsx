@@ -212,76 +212,109 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ report }) => {
             <div className={`absolute bottom-0 left-0 right-0 h-2 ${report.riskScore > 50 ? 'bg-red-500' : 'bg-emerald-500'} opacity-20`}></div>
           </div>
 
-          {/* Document Summary */}
+          {/* Document Summary - Enhanced */}
           <div className="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
               <FileSearch size={16} /> Document Details
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs text-slate-500 block">দলিলের ধরন</span>
-                <span className="font-semibold text-base text-slate-800 bangla-text">{report.documentType || "N/A"}</span>
+                <span className="font-semibold text-sm text-slate-800 bangla-text">{report.documentType || "N/A"}</span>
               </div>
-              <div className="p-4 bg-slate-50 rounded-lg">
-                <span className="text-xs text-slate-500 block">সম্পত্তির মূল্য</span>
-                <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.propertyAmount || "N/A"}</span>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-lg">
-                <span className="text-xs text-slate-500 block">মৌজা</span>
-                <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.mouza || "N/A"}</span>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-lg">
+              <div className="p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs text-slate-500 block">দলিল নম্বর</span>
-                <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.deedNo || "N/A"}</span>
+                <span className="font-semibold text-sm text-slate-800 bangla-text">{report.summary.deedNo || "N/A"}</span>
               </div>
-              <div className="p-4 bg-slate-50 rounded-lg">
+              <div className="p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs text-slate-500 block">তারিখ</span>
-                <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.date || "N/A"}</span>
+                <span className="font-semibold text-sm text-slate-800 bangla-text">{report.summary.date || "N/A"}</span>
               </div>
-              {(report.summary.dagNo || report.summary.khatianNo) && (
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">দাগ/খতিয়ান</span>
-                  <span className="font-semibold text-base text-slate-800 bangla-text">
-                    {report.summary.dagNo || '-'} / {report.summary.khatianNo || '-'}
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <span className="text-xs text-slate-500 block">সম্পত্তির মূল্য</span>
+                <span className="font-semibold text-sm text-slate-800 bangla-text">{report.summary.propertyAmount || "N/A"}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <span className="text-xs text-slate-500 block">মৌজা</span>
+                <span className="font-semibold text-sm text-slate-800 bangla-text">{report.summary.mouza || "N/A"}</span>
+              </div>
+              {(report.summary.thana || report.summary.district) && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <span className="text-xs text-slate-500 block">থানা/জেলা</span>
+                  <span className="font-semibold text-sm text-slate-800 bangla-text">
+                    {report.summary.thana || '-'}, {report.summary.district || '-'}
                   </span>
                 </div>
               )}
-              {report.summary.sellerName && (
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">বিক্রেতা</span>
-                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.sellerName}</span>
+              {report.summary.dagNo && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <span className="text-xs text-blue-600 block">দাগ নম্বর</span>
+                  <span className="font-semibold text-sm text-blue-800 bangla-text">{report.summary.dagNo}</span>
                 </div>
               )}
-              {report.summary.buyerName && (
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">ক্রেতা</span>
-                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.buyerName}</span>
+              {report.summary.khatianNo && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <span className="text-xs text-blue-600 block">খতিয়ান নম্বর</span>
+                  <span className="font-semibold text-sm text-blue-800 bangla-text">{report.summary.khatianNo}</span>
                 </div>
               )}
               {report.summary.landAmount && (
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <span className="text-xs text-slate-500 block">জমির পরিমাণ</span>
-                  <span className="font-semibold text-base text-slate-800 bangla-text">{report.summary.landAmount}</span>
+                <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                  <span className="text-xs text-green-600 block">জমির পরিমাণ</span>
+                  <span className="font-semibold text-sm text-green-800 bangla-text">{report.summary.landAmount}</span>
+                </div>
+              )}
+              {report.summary.landType && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <span className="text-xs text-slate-500 block">জমির ধরন</span>
+                  <span className="font-semibold text-sm text-slate-800 bangla-text">{report.summary.landType}</span>
                 </div>
               )}
             </div>
+            
+            {/* Parties Section */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Seller */}
+              {report.summary.sellerName && (
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                  <span className="text-xs text-orange-600 font-semibold block mb-1">বিক্রেতা/দাতা</span>
+                  <span className="font-semibold text-slate-800 bangla-text block">{report.summary.sellerName}</span>
+                  {report.summary.sellerFather && (
+                    <span className="text-xs text-slate-600 bangla-text">পিতা: {report.summary.sellerFather}</span>
+                  )}
+                </div>
+              )}
+              {/* Buyer */}
+              {report.summary.buyerName && (
+                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                  <span className="text-xs text-emerald-600 font-semibold block mb-1">ক্রেতা/গ্রহীতা</span>
+                  <span className="font-semibold text-slate-800 bangla-text block">{report.summary.buyerName}</span>
+                  {report.summary.buyerFather && (
+                    <span className="text-xs text-slate-600 bangla-text">পিতা: {report.summary.buyerFather}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Property Description */}
             {report.summary.propertyDescription && (
               <div className="mt-4 p-4 bg-slate-50 rounded-lg">
                 <span className="text-xs text-slate-500 block mb-1">সম্পত্তির বিবরণ</span>
                 <span className="text-sm text-slate-800 bangla-text">{report.summary.propertyDescription}</span>
               </div>
             )}
-            {/* PRO: Boundaries */}
-            {isPro && report.summary.boundaries && (
+            
+            {/* Boundaries - Show for both PLUS and PRO */}
+            {report.summary.boundaries && (report.summary.boundaries.north || report.summary.boundaries.south) && (
               <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
                 <span className="text-xs text-indigo-600 font-semibold block mb-2 flex items-center gap-1">
                   <MapPin size={12} /> চৌহদ্দি (Boundaries)
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="text-slate-500">উত্তর:</span> <span className="bangla-text">{report.summary.boundaries.north || '-'}</span></div>
-                  <div><span className="text-slate-500">দক্ষিণ:</span> <span className="bangla-text">{report.summary.boundaries.south || '-'}</span></div>
-                  <div><span className="text-slate-500">পূর্ব:</span> <span className="bangla-text">{report.summary.boundaries.east || '-'}</span></div>
-                  <div><span className="text-slate-500">পশ্চিম:</span> <span className="bangla-text">{report.summary.boundaries.west || '-'}</span></div>
+                  <div><span className="text-slate-500">উত্তর:</span> <span className="bangla-text font-medium">{report.summary.boundaries.north || '-'}</span></div>
+                  <div><span className="text-slate-500">দক্ষিণ:</span> <span className="bangla-text font-medium">{report.summary.boundaries.south || '-'}</span></div>
+                  <div><span className="text-slate-500">পূর্ব:</span> <span className="bangla-text font-medium">{report.summary.boundaries.east || '-'}</span></div>
+                  <div><span className="text-slate-500">পশ্চিম:</span> <span className="bangla-text font-medium">{report.summary.boundaries.west || '-'}</span></div>
                 </div>
               </div>
             )}

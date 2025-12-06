@@ -28,6 +28,7 @@ export interface AnalysisResult {
     date: string;
     registrationOffice?: string;
     propertyAmount: string;
+    marketValue?: string;
     stampDuty?: string;
     registrationFee?: string;
     sellerName?: string;
@@ -36,6 +37,7 @@ export interface AnalysisResult {
     buyerName?: string;
     buyerFather?: string;
     buyerAddress?: string;
+    witnesses?: string[];
     propertyDescription?: string;
     dagNo?: string;
     khatianNo?: string;
@@ -48,6 +50,13 @@ export interface AnalysisResult {
       west?: string;
     };
   };
+  
+  // Verification checklist (new)
+  verificationChecklist?: {
+    item: string;
+    where: string;
+    priority: 'High' | 'Medium' | 'Low';
+  }[];
 
   // PRO: Page-by-page analysis
   pageByPageAnalysis?: {

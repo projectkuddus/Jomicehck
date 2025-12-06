@@ -71,7 +71,7 @@ const Support: React.FC = () => {
            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
              <MessageSquare size={24} />
            </div>
-           <h3 className="text-xl font-bold text-slate-900 mb-2">নির্ণয় AI Chat</h3>
+           <h3 className="text-xl font-bold text-slate-900 mb-2">AI Live Chat</h3>
            <p className="text-slate-500 text-sm mb-4">
              24/7 AI সাপোর্ট - বাংলায় প্রশ্ন করুন
            </p>

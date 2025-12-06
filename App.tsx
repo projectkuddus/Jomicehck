@@ -777,7 +777,7 @@ const AppContent: React.FC = () => {
 
       </main>
 
-      {/* Live Chat - নির্ণয় AI Support */}
+      {/* Live Chat - JomiCheck AI Support */}
       <LiveChat />
 
       {/* Debug Component (only in development) */}

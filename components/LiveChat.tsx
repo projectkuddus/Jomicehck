@@ -13,7 +13,7 @@ const LiveChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: 'আসসালামু আলাইকুম! 👋 আমি নির্ণয়, JomiCheck এর AI সহকারী। জমি দলিল বা JomiCheck সম্পর্কে কোনো প্রশ্ন থাকলে জিজ্ঞেস করুন!',
+      text: 'আসসালামু আলাইকুম! 👋 JomiCheck এ স্বাগতম। জমি দলিল বা আমাদের সেবা সম্পর্কে কোনো প্রশ্ন থাকলে জিজ্ঞেস করুন!',
       timestamp: new Date()
     }
   ]);
@@ -125,7 +125,7 @@ const LiveChat: React.FC = () => {
           </span>
         )}
         <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-          💬 নির্ণয় - 24/7 সাপোর্ট
+          💬 JomiCheck সাপোর্ট
         </span>
       </button>
     );
@@ -147,9 +147,9 @@ const LiveChat: React.FC = () => {
             <Bot size={22} />
           </div>
           <div>
-            <h3 className="font-bold text-lg">নির্ণয়</h3>
+            <h3 className="font-bold text-lg">JomiCheck</h3>
             {!isMinimized && (
-              <p className="text-emerald-100 text-xs">AI সাপোর্ট • 24/7 অনলাইন</p>
+              <p className="text-emerald-100 text-xs">AI সাপোর্ট • 24/7</p>
             )}
           </div>
         </div>

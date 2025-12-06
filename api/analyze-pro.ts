@@ -260,12 +260,12 @@ Instructions:
 Return ONLY valid JSON. Write everything in Bengali.`
     });
 
-    // Use gemini-1.5-flash for PRO - it has 1M context and follows complex prompts well
-    // The PRO value comes from: detailed prompt + rich output format + premium UI
-    console.log('🤖 Calling Gemini 1.5 Flash for PRO deep analysis...');
+    // PRO uses the same model but with detailed prompt and rich output format
+    // The PRO value comes from: detailed system instruction + rich JSON schema + premium UI
+    console.log('🤖 Calling Gemini for PRO deep analysis...');
     
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       contents: { parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,

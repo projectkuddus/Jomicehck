@@ -60,19 +60,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Invalid request: 'documents' array is required" });
     }
 
-    // PLUS: Use Gemini 1.5 Flash (best for Bengali, fast, cost-effective)
-    // Fallback to GPT-4o-mini if Gemini not available
+    // PLUS: Use ONLY Gemini (BEST for Bengali) - NO GPT-4o fallback
+    // GPT-4o is inferior for Bengali language understanding
     const geminiKey = process.env.GEMINI_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
     
-    if (!geminiKey && !openaiKey) {
-      return res.status(500).json({ error: 'No AI API key configured' });
+    if (!geminiKey) {
+      return res.status(500).json({ 
+        error: 'GEMINI_API_KEY required. Gemini is the best model for Bengali documents. Please add your API key to Vercel.' 
+      });
     }
 
-    console.log('🔷 PLUS Analysis (Clear Documents) starting for', documents.length, 'documents');
+    console.log('🔷 PLUS Analysis (Clear Documents) - Using Gemini (Best for Bengali)');
     
-    // Prefer Gemini for Bengali documents
-    if (geminiKey) {
+    // Use Gemini ONLY - best for Bengali
+    try {
       try {
         const { GoogleGenAI } = await import('@google/genai');
         const ai = new GoogleGenAI({ apiKey: geminiKey });
@@ -159,15 +160,24 @@ JSON ফরম্যাটে উত্তর দিন:
 }`
         });
 
-        const result = await ai.models.generateContent({
-          model: 'gemini-1.5-flash', // Fast, excellent for Bengali
-          contents: { parts },
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
+        // Use best available Gemini model for Bengali
+        // Try 2.0 first (best Bengali support), fallback to 1.5
+        const modelPriority = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+        let result: any = null;
+        let lastError: any = null;
+        
+        for (const modelName of modelPriority) {
+          try {
+            console.log(`🤖 Trying ${modelName} for PLUS...`);
+            result = await ai.models.generateContent({
+              model: modelName,
+              contents: { parts },
+              config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+                responseMimeType: 'application/json',
+                temperature: 0.1, // Low temperature for accuracy
+              },
+            });
 
         const text = result.text || '';
         if (text) {
@@ -223,113 +233,12 @@ JSON ফরম্যাটে উত্তর দিন:
           console.log('✅ PLUS Analysis completed with Gemini');
           return res.json(finalResult);
         }
-      } catch (geminiError: any) {
-        console.warn('⚠️ Gemini failed, falling back to OpenAI:', geminiError.message);
-        // Fall through to OpenAI fallback
-      }
-    }
-
-    // Fallback to OpenAI GPT-4o-mini
-    if (!openaiKey) {
-      return res.status(500).json({ error: 'AI API not configured' });
-    }
-
-    const { default: OpenAI } = await import('openai');
-    const openai = new OpenAI({ apiKey: openaiKey });
-
-    const imageContents: any[] = [];
-    const extractedTexts: string[] = [];
-
-    for (let i = 0; i < documents.length; i++) {
-      const doc = documents[i];
-      const base64Data = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
-      
-      if (doc.extractedText && doc.extractedText.length > 10) {
-        extractedTexts.push(`--- ডকুমেন্ট ${i + 1}: ${doc.name} ---\n${doc.extractedText}`);
-      }
-      
-      imageContents.push({
-        type: "image_url",
-        image_url: {
-          url: `data:${doc.mimeType};base64,${base64Data}`,
-          detail: "high"
-        }
+    } catch (geminiError: any) {
+      console.error('❌ Gemini failed:', geminiError.message);
+      return res.status(500).json({ 
+        error: `Gemini API error: ${geminiError.message}. Gemini is required for Bengali document analysis.` 
       });
     }
-
-    if (extractedTexts.length > 0) {
-      imageContents.unshift({
-        type: "text",
-        text: `📋 PDF থেকে সরাসরি নেওয়া টেক্সট:\n\n${extractedTexts.join('\n\n')}\n\n---\n\nএই টেক্সট PDF থেকে সরাসরি extract করা। ছবি ও টেক্সট মিলিয়ে সঠিক তথ্য দিন。`
-      });
-    }
-
-    imageContents.push({
-      type: "text",
-      text: `PLUS বিশ্লেষণ: ${documents.length}টি ডকুমেন্ট পড়ুন এবং JSON ফরম্যাটে উত্তর দিন (same format as above)`
-    });
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_INSTRUCTION },
-        { role: "user", content: imageContents }
-      ],
-      max_tokens: 4096,
-      temperature: 0.1,
-      response_format: { type: "json_object" }
-    });
-
-    const text = response.choices[0]?.message?.content;
-    if (!text) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    const rawResult = JSON.parse(text);
-    const finalResult = {
-      modelUsed: 'gpt-4o-mini',
-      riskScore: rawResult.riskScore ?? 50,
-      riskLevel: rawResult.riskLevel || 'Medium Risk',
-      documentType: rawResult.documentType || 'দলিল',
-      documentTypes: rawResult.documentTypes || [],
-      isSameProperty: rawResult.isSameProperty ?? true,
-      propertyMatchReason: rawResult.propertyMatchReason || '',
-      summary: {
-        mouza: rawResult.summary?.mouza || '',
-        jla: rawResult.summary?.jla || '',
-        thana: rawResult.summary?.thana || '',
-        district: rawResult.summary?.district || '',
-        deedNo: rawResult.summary?.deedNo || '',
-        date: rawResult.summary?.date || '',
-        registrationOffice: rawResult.summary?.registrationOffice || '',
-        propertyAmount: rawResult.summary?.propertyAmount || '',
-        sellerName: rawResult.summary?.sellerName || '',
-        sellerFather: rawResult.summary?.sellerFather || '',
-        buyerName: rawResult.summary?.buyerName || '',
-        buyerFather: rawResult.summary?.buyerFather || '',
-        dagNo: rawResult.summary?.dagNo || '',
-        khatianNo: rawResult.summary?.khatianNo || '',
-        landAmount: rawResult.summary?.landAmount || '',
-        landType: rawResult.summary?.landType || '',
-        boundaries: rawResult.summary?.boundaries || null,
-      },
-      goodPoints: rawResult.goodPoints || [],
-      badPoints: rawResult.badPoints || [],
-      criticalIssues: rawResult.criticalIssues || [],
-      missingInfo: rawResult.missingInfo || [],
-      chainOfTitleAnalysis: rawResult.chainOfTitleAnalysis || '',
-      chainOfTitleTimeline: rawResult.chainOfTitleTimeline || [],
-      buyerProtection: {
-        verdict: rawResult.buyerProtection?.verdict || 'Neutral',
-        score: rawResult.buyerProtection?.score,
-        details: rawResult.buyerProtection?.details || '',
-      },
-      nextSteps: rawResult.nextSteps || [],
-      verificationChecklist: rawResult.verificationChecklist || [],
-    };
-
-    console.log('✅ PLUS Analysis completed with OpenAI');
-    return res.json(finalResult);
 
   } catch (error: any) {
     console.error("❌ PLUS Analysis error:", error.message);

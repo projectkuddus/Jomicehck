@@ -40,7 +40,7 @@ export async function extractTextWithVisionOCR(
                 },
               ],
               imageContext: {
-                languageHints: ['bn', 'en'], // Bengali + English
+                languageHints: ['bn'], // Bengali ONLY - best accuracy for Bengali documents
               },
             },
           ],

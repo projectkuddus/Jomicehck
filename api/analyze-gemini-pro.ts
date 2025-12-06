@@ -79,17 +79,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Invalid request: 'documents' array is required" });
     }
 
+    // PRO: Use ONLY Gemini (BEST for Bengali) - NO GPT-4o fallback
+    // GPT-4o is inferior for Bengali language understanding
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error('❌ GEMINI_API_KEY not found, falling back to OpenAI');
-      // Fallback to OpenAI if Gemini key not available
-      const openaiKey = process.env.OPENAI_API_KEY;
-      if (!openaiKey) {
-        return res.status(500).json({ error: 'No AI API key configured' });
-      }
-      // Redirect to OpenAI endpoint
-      const { default: openaiHandler } = await import('./analyze-gpt4o.js');
-      return openaiHandler(req, res);
+      return res.status(500).json({ 
+        error: 'GEMINI_API_KEY required. Gemini is the best model for Bengali documents. Please add your API key to Vercel.' 
+      });
     }
 
     console.log('🔷 Gemini Pro Analysis starting for', documents.length, 'documents');
@@ -226,11 +222,12 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
 }`
     });
 
-    // Try best available Gemini model (with fallbacks)
+    // Use BEST available Gemini model for Bengali
+    // Priority: Latest models first (best Bengali support)
     const modelPriority = [
-      'gemini-2.0-flash-exp',  // Latest, fastest
-      'gemini-1.5-pro',         // Reliable, widely available
-      'gemini-1.5-flash',      // Fast fallback
+      'gemini-2.0-flash-exp',  // Latest - BEST for Bengali
+      'gemini-1.5-pro',         // Excellent Bengali support
+      'gemini-1.5-flash',       // Fast, good Bengali support
     ];
     
     let result: any = null;
@@ -355,14 +352,11 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
       return res.json(finalResult);
 
   } catch (modelError: any) {
-    // Fallback to GPT-4o if Gemini fails
-    console.warn('⚠️ Gemini model failed, falling back to OpenAI:', modelError.message);
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      const { default: openaiHandler } = await import('./analyze-gpt4o.js');
-      return openaiHandler(req, res);
-    }
-    throw modelError;
+    // NO fallback - Gemini is required for Bengali
+    console.error('❌ Gemini PRO failed:', modelError.message);
+    return res.status(500).json({ 
+      error: `Gemini API error: ${modelError.message}. Gemini is required for Bengali document analysis.` 
+    });
   }
 
   } catch (error: any) {

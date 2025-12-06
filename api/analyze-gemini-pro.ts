@@ -406,9 +406,26 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           });
         }
         
-        console.log('🤖 Trying GPT-5.1 (most advanced OpenAI model)...');
-        const response = await openai.chat.completions.create({
-          model: 'gpt-5.1', // Most advanced OpenAI model
+              // Try GPT-5.1 first, fallback to GPT-4o if not available
+              let openaiModel = 'gpt-5.1';
+              try {
+                // Test if GPT-5.1 is available
+                const testResponse = await openai.chat.completions.create({
+                  model: 'gpt-5.1',
+                  messages: [{ role: 'user', content: 'test' }],
+                  max_tokens: 1,
+                });
+                console.log('✅ GPT-5.1 is available');
+              } catch (e: any) {
+                if (e.message?.includes('model') || e.message?.includes('not found')) {
+                  console.warn('⚠️ GPT-5.1 not available, using GPT-4o instead');
+                  openaiModel = 'gpt-4o'; // Fallback to GPT-4o
+                }
+              }
+              
+              console.log(`🤖 Trying ${openaiModel} (most advanced OpenAI model)...`);
+              const response = await openai.chat.completions.create({
+                model: openaiModel, // GPT-5.1 or GPT-4o fallback
           messages: [
             { role: "system", content: SYSTEM_INSTRUCTION },
             { role: "user", content: imageContents }
@@ -424,7 +441,7 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
           // Build same result structure
           const finalResult = {
             proAnalysis: true,
-            modelUsed: 'gpt-5.1', // Most advanced OpenAI
+            modelUsed: openaiModel, // GPT-5.1 or GPT-4o (whichever is available)
             riskScore: rawResult.riskScore ?? 50,
             riskLevel: rawResult.riskLevel || 'Medium Risk',
             confidenceScore: rawResult.expertVerdict?.confidence || 90,

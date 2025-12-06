@@ -1,0 +1,32 @@
+{
+  "name": "JomiCheck - জমি ও সম্পত্তির দলিল যাচাই",
+  "short_name": "JomiCheck",
+  "description": "বাংলাদেশের প্রথম AI-ভিত্তিক দলিল যাচাই সেবা। Land deed verification Bangladesh.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#22c55e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["business", "utilities", "productivity"],
+  "lang": "bn",
+  "dir": "ltr"
+}
+

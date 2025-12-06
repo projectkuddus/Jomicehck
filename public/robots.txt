@@ -1,18 +1,22 @@
 # JomiCheck Robots.txt
 # https://www.jomicheck.com
+# বাংলাদেশের প্রথম AI-ভিত্তিক দলিল যাচাই সেবা
 
 User-agent: *
 Allow: /
+Crawl-delay: 1
 
 # Sitemap location
 Sitemap: https://www.jomicheck.com/sitemap.xml
 
-# Block API endpoints from indexing
+# Block API endpoints from indexing (except OG image)
 Disallow: /api/
+Allow: /api/og
 
 # Allow all major crawlers
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 0
 
 User-agent: Bingbot
 Allow: /
@@ -23,3 +27,15 @@ Allow: /
 User-agent: Twitterbot
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
+# Keywords for crawlers (metadata, not directive)
+# জমি যাচাই, দলিল যাচাই, jomi check, land verification bangladesh
+# property verification, AI deed analyzer, জমির দলিল, খতিয়ান

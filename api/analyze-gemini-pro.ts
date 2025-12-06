@@ -242,27 +242,38 @@ JSON ফরম্যাটে উত্তর দিন (সব বাংলা�
         console.log(`🤖 PRO: Trying ${modelName} (Pro model only, NO Flash)...`);
         
         // Use correct API format for @google/genai
-        const modelConfig: any = {
-          model: modelName,
-          systemInstruction: SYSTEM_INSTRUCTION,
-        };
-        
-        // Add Deep Think config for Gemini 3 Pro Deep Think
-        if (modelName === 'gemini-3-pro-deep-think') {
-          modelConfig.thinkingConfig = {
-            thinkingBudget: 32768, // Maximum thinking budget
-          };
+        // The package uses a different structure - try direct model call
+        try {
+          // Try the standard format first
+          const model = ai.getGenerativeModel({
+            model: modelName,
+            systemInstruction: SYSTEM_INSTRUCTION,
+          });
+          
+          result = await model.generateContent({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+        } catch (apiError: any) {
+          // If getGenerativeModel doesn't exist, try alternative format
+          if (apiError.message?.includes('getGenerativeModel') || apiError.message?.includes('is not a function')) {
+            // Try using models.generateContent directly
+            result = await ai.models.generateContent({
+              model: modelName,
+              contents: { parts },
+              config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+                responseMimeType: 'application/json',
+                temperature: 0.1,
+              },
+            });
+          } else {
+            throw apiError;
+          }
         }
-        
-        const model = ai.getGenerativeModel(modelConfig);
-        
-        result = await model.generateContent({
-          contents: [{ parts }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1, // Low temperature for accuracy
-          },
-        });
         
         console.log(`✅ ${modelName} responded successfully (Pro model)`);
         break; // Success, exit loop

@@ -164,18 +164,38 @@ JSON ফরম্যাটে উত্তর দিন:
       console.log(`🤖 PLUS: Using Gemini 2.0 Pro Exp (latest, best for Bengali, NO older models)...`);
       
       // Use correct API format for @google/genai
-      const model = ai.getGenerativeModel({ 
-        model: 'gemini-2.0-pro-exp',
-        systemInstruction: SYSTEM_INSTRUCTION,
-      });
-      
-      const result = await model.generateContent({
-        contents: [{ parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        },
-      });
+      // Try both formats to handle different package versions
+      let result: any;
+      try {
+        // Try getGenerativeModel format (newer)
+        const model = ai.getGenerativeModel({ 
+          model: 'gemini-2.0-pro-exp',
+          systemInstruction: SYSTEM_INSTRUCTION,
+        });
+        
+        result = await model.generateContent({
+          contents: [{ parts }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
+      } catch (apiError: any) {
+        // Fallback to models.generateContent format (older)
+        if (apiError.message?.includes('getGenerativeModel') || apiError.message?.includes('is not a function')) {
+          result = await ai.models.generateContent({
+            model: 'gemini-2.0-pro-exp',
+            contents: { parts },
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+        } else {
+          throw apiError;
+        }
+      }
           
       console.log(`✅ Gemini 2.0 Pro Exp responded successfully`);
       

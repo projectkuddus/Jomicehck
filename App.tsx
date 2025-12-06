@@ -710,10 +710,10 @@ const AppContent: React.FC = () => {
                    </div>
                    
                    {/* Main Content Area */}
-                   <div className="flex-1 overflow-hidden relative">
+                   <div className="flex-1 overflow-hidden relative print:!overflow-visible print:!h-auto">
                       {activeTab === 'report' ? (
-                        <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-10 bg-slate-100/50 print:p-0 print:bg-white">
-                          <div className="max-w-4xl mx-auto bg-white min-h-full shadow-sm border border-slate-200 rounded-xl p-8 md:p-12 print:max-w-full print:shadow-none print:border-none print:p-4">
+                        <div id="report-container" className="h-full overflow-y-auto custom-scrollbar p-6 md:p-10 bg-slate-100/50 print:!overflow-visible print:!h-auto print:!p-0 print:!bg-white">
+                          <div className="max-w-4xl mx-auto bg-white min-h-full shadow-sm border border-slate-200 rounded-xl p-8 md:p-12 print:!max-w-full print:!shadow-none print:!border-none print:!p-4 print:!m-0">
                              <AnalysisReport report={analysis.result} />
                           </div>
                         </div>

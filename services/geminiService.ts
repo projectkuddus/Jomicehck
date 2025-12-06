@@ -32,12 +32,12 @@ const analyzeBatch = async (
     }
   };
 
-  // Use different endpoint based on tier
-  // PRO uses GPT-4o (state-of-the-art, lowest hallucination)
-  // PLUS uses Gemini (faster, cheaper)
+  // Both tiers now use OpenAI (no more Gemini hallucinations)
+  // PRO = GPT-4o (best accuracy, state-of-the-art)
+  // PLUS = GPT-4o-mini (fast, accurate, cost-effective)
   const endpoint = tier === 'pro' ? '/api/analyze-gpt4o' : '/api/analyze';
   
-  console.log(`🔷 Using ${tier.toUpperCase()} analysis (${endpoint})`);
+  console.log(`🔷 Using ${tier.toUpperCase()} analysis with OpenAI (${endpoint})`);
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',

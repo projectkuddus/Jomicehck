@@ -43,18 +43,17 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, setFiles, disabled }) =>
         // Set worker source for PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
         
-        // Load PDF from base64
-        const base64WithoutPrefix = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-        const pdf = await pdfjsLib.getDocument({ data: atob(base64WithoutPrefix) }).promise;
+        // Load PDF from ArrayBuffer (more reliable than base64)
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         estimatedPages = pdf.numPages;
-        console.log(`📄 PDF "${file.name}" has ${estimatedPages} pages`);
+        console.log(`📄 PDF "${file.name}" has ${estimatedPages} actual pages`);
       } catch (pdfError: any) {
-        console.warn('⚠️ Failed to count PDF pages, using estimate:', pdfError.message);
-        // Fallback: Estimate based on file size (rough: 50KB per page average)
-        // But warn user it's an estimate
-        const fileSizeKB = file.size / 1024;
-        estimatedPages = Math.max(1, Math.ceil(fileSizeKB / 50)); // ~50KB per page estimate
-        console.warn(`⚠️ Using size-based estimate: ${estimatedPages} pages for ${fileSizeKB.toFixed(0)}KB file`);
+        console.warn('⚠️ Failed to count PDF pages:', pdfError.message);
+        // Fallback: Conservative estimate - assume 5 pages if we can't read it
+        // Better to undercharge than overcharge the user
+        estimatedPages = 5;
+        console.warn(`⚠️ Using fallback: ${estimatedPages} pages (couldn't read PDF)`);
       }
     }
 
